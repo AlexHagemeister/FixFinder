@@ -144,6 +144,30 @@ describe("Report flow", () => {
     expect(note).toHaveTextContent("sample output");
   });
 
+  it("opens the camera from Result's Retake photo, and a new photo starts a new report", async () => {
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    geo.allow();
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "Retake photo" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    // Closing the camera without a photo leaves Result in place.
+    expect(router.state.location.pathname).toBe("/result");
+
+    const retake = new File(["new photo"], "retake.jpg", { type: "image/jpeg" });
+    fireEvent.change(input, { target: { files: [retake] } });
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2));
+    geo.allow();
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(vi.mocked(lookup).mock.calls[1]![0].photo).toBe(retake);
+  });
+
   it("returns to Home with a message when location times out", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");

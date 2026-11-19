@@ -1,25 +1,34 @@
+import { useRef } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon, BuildingIcon, ExternalIcon, TagIcon } from "../icons.tsx";
+import { PhotoInput } from "./PhotoInput.tsx";
 
 // Result: shows what FixFinder found, with the photo, the category, the responsible party, and its source.
 // Layout and wording follow the prototype's review screen. Its Change controls and draft button are left out:
 // correcting the guess and drafting the report are not part of #1, and a control that does nothing is a false signifier.
 export function Result() {
-  const { photo, result } = useReportFlow();
+  const { photo, result, startReport } = useReportFlow();
   const navigate = useNavigate();
+  const photoInput = useRef<HTMLInputElement>(null);
 
   // A reload or a direct visit has nothing in memory to show.
-  if (!photo || !result) return <Navigate to="/" replace />;
+  if (!photo) return <Navigate to="/" replace />;
+  // A photo with no result is Retake photo starting a new report, on its way to Working. Sending the user Home here
+  // would end that report, so the screen stays blank for the moment it takes.
+  if (!result) return null;
 
   return (
     <main className="screen">
       <div className="scroll">
         <div className="top">
-          <button type="button" className="back" onClick={() => navigate("/")}>
+          {/* Retake photo opens the camera, as its label says, and a new photo starts a new report. If the user closes
+              the camera without a photo, Result stays. */}
+          <button type="button" className="back" onClick={() => photoInput.current?.click()}>
             <BackIcon />
             Retake photo
           </button>
+          <PhotoInput ref={photoInput} onPick={startReport} />
         </div>
         <div className="photo-row">
           <img className="thumb large" src={photo.url} alt="Your photo" />

@@ -1,18 +1,12 @@
-import { useRef, type ChangeEvent } from "react";
+import { useRef } from "react";
 import { useReportFlow } from "../flow/flow-context.ts";
 import { CameraIcon, WrenchIcon } from "../icons.tsx";
+import { PhotoInput } from "./PhotoInput.tsx";
 
 // Home: the first screen, where the user starts a report by taking a photo.
 export function Home() {
   const { startReport, notice } = useReportFlow();
   const photoInput = useRef<HTMLInputElement>(null);
-
-  function onPhotoPicked(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    // Clear the input so taking the same photo again still counts as a change.
-    event.target.value = "";
-    if (file) startReport(file);
-  }
 
   return (
     <main className="screen">
@@ -41,16 +35,7 @@ export function Home() {
           <CameraIcon />
           Take a photo
         </button>
-        <input
-          ref={photoInput}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="visually-hidden"
-          tabIndex={-1}
-          aria-hidden="true"
-          onChange={onPhotoPicked}
-        />
+        <PhotoInput ref={photoInput} onPick={startReport} />
       </div>
     </main>
   );
