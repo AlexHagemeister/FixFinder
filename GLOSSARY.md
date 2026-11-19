@@ -1,0 +1,55 @@
+# FixFinder glossary
+
+The words the team and its agents use for things in FixFinder. One word per idea: when a term lists words to avoid, use the term instead, in conversation, in issues, in code, and on screen. Course design terms (affordance, gulf of evaluation, Nielsen's heuristics) live in [DESIGN-VOCABULARY.md](DESIGN-VOCABULARY.md), not here.
+
+A term is added when the team settles on a word, not before. When a screen, flow, or UI element gets a name, it goes under a **Screens and flows** heading with the same rules.
+
+## The problem and the report
+
+**Problem**:
+Something broken or wrong that a user wants fixed, like a pothole or a smashed bus shelter.
+_Avoid_: issue (that means a GitHub issue), hazard, incident
+
+**Photo**:
+The picture the user takes of a problem. It is the starting point of every report.
+_Avoid_: image, picture, snapshot
+
+**Category**:
+The kind of problem FixFinder thinks it is looking at, like "pothole" or "broken streetlight."
+_Avoid_: type, label, classification
+
+**Location**:
+Where the problem is, said the way a person would describe it (a street address, an intersection, a landmark).
+_Avoid_: place, spot, coordinates, GPS
+
+**Report**:
+The message about one problem that goes to the responsible party. FixFinder drafts it, the user checks it, and only the user submits it.
+_Avoid_: ticket, complaint, request, submission
+
+## Who fixes it
+
+**Responsible party**:
+Whoever owns fixing a given problem at a given location: a public agency, a landlord, or a business. Finding it is FixFinder's central job.
+_Avoid_: owner, handler, authority
+
+**Agency**:
+A public organization that is a responsible party, called by its public name (Berkeley Public Works, AC Transit, Caltrans).
+_Avoid_: department, office, city
+
+**Reporting channel**:
+How a responsible party takes reports: an email address, an online portal, a phone number, or an API.
+_Avoid_: method, contact, intake
+
+**Source**:
+Where FixFinder's answer about the responsible party came from, shown to the user so they can check it.
+_Avoid_: citation, reference, evidence
+
+## After the report
+
+**Case**:
+A responsible party's own record of a report once it has been received, often with a case number and a status.
+_Avoid_: ticket, request, issue
+
+**Report status**:
+Where a report stands, from submitted to resolved, as far as FixFinder can tell. When a case exists, its status feeds the report status.
+_Avoid_: hearing back, follow-up, updates
