@@ -85,7 +85,7 @@ Our AI usage through the course is limited. Build and test against the stand-in 
 
 FixFinder is a web app that you save to your home screen, so it opens like any other app.
 
-**Live link:** _added after the first deploy._
+**Live link:** https://fixfinder.alexhagemeister.workers.dev
 
 - **iPhone:** open the link in Safari, open the Share menu, and tap **Add to Home Screen**.
 - **Android:** open the link in Chrome, open the **⋮** menu, and tap **Add to Home screen** (some versions say **Install app**).
