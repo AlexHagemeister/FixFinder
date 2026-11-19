@@ -5,3 +5,15 @@
 - Write heuristic findings as `[heuristic][severity] problem + fix`.
 - Use the terms in [GLOSSARY.md](GLOSSARY.md) in conversation, issues, code, and on screen, and never the words it lists to avoid. When the team settles a new term, add it there in the same change.
 - Naming a new screen, flow, or UI element is part of building it: add the name under the glossary's Screens and flows heading in the same PR.
+
+<!-- gnadd:conventions -->
+## GNADD
+
+This repo runs GNADD (Git-Native Agent-Driven Development): GitHub issues,
+branches, PRs, and git history are the sole system of record. No task files,
+no progress notes. Start every session with `/prime-gnadd`. Every change
+lands through an issue, a branch, and a PR, or through `/quickfix-gnadd` for
+a trivial one. Project intent lives in `VISION.md` when present.
+
+Preview launch: (none yet: put the command or URL that starts a dev preview here)
+<!-- /gnadd:conventions -->
