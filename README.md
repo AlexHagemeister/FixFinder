@@ -42,7 +42,7 @@ We build FixFinder partly with AI coding agents, tools like Claude Code, Cursor,
 
 **[GLOSSARY.md](GLOSSARY.md) gives everyone one word for each thing in FixFinder.** It defines the app's own terms (problem, report, responsible party, case) and lists the words to avoid, so teammates and agents mean the same thing in conversation, issues, code, and on screen. It also names the screens and UI elements, so "x on the y screen" has an answer. A term gets added when the team settles on a word.
 
-**[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the three files above and sets how they write design findings. A rule we want every agent to follow goes here.
+**[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the three files above and at this README's build section, and sets how they write design findings. A rule we want every agent to follow goes here.
 
 **[REVIEWING.md](REVIEWING.md) is the checklist a reviewing agent follows.** It is not session context like the four files above: agents read it only when they review a PR, so it costs nothing the rest of the time.
 
@@ -57,11 +57,23 @@ When a design call comes up, name the principle at stake ("this is a gulf of eva
 
 This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeister/gnadd](https://github.com/AlexHagemeister/gnadd).
 
+## How FixFinder is built and shipped
+
+**What it's made of.** FixFinder is a web app written in TypeScript with React. A tool called Vite turns that code into plain web files (HTML, JavaScript, CSS) that any phone browser can open. Bun installs the packages and runs the project's scripts, like `bun run build`.
+
+**Where it lives.** Cloudflare hosts those files on its free plan. Nobody on the team pays anything for hosting.
+
+**What happens when you push a branch.** Cloudflare builds the branch and puts it at its own preview link, so you can try your change on a phone before anyone merges it. The link is the branch name with slashes turned into dashes, then `-fixfinder.alexhagemeister.workers.dev`. For example, the branch `issue-1/phone-app-shell` lives at `issue-1-phone-app-shell-fixfinder.alexhagemeister.workers.dev`.
+
+**What happens when you open a pull request.** Two automatic checks run on it. `ci` installs the app, checks the TypeScript, builds it, and runs the tests. `Workers Builds: fixfinder` is Cloudflare building the preview link. A red check means something broke.
+
+**What happens when a pull request merges.** Cloudflare rebuilds `main` and updates the live link. A phone that already has FixFinder open or on its home screen downloads the new version the next time the app opens, then reloads into it on its own.
+
 ## Keys and secrets
 
 **This repo is public. Never commit an API key.**
 
-- Deployed keys live in the Vercel project's environment variable settings.
+- Deployed keys live in the Supabase project's Edge Function secrets, never in the app's own code, since everything in the app is sent to every phone.
 - Local keys go in a `.env` file on your own machine. `.env` files never get committed.
 - If a key does get committed, tell the team right away so it can be revoked. Deleting it in a later commit does not remove it from the history.
 
@@ -82,4 +94,13 @@ The app asks for your location the first time you use it. It needs your location
 
 ## Run it locally
 
-_Setup steps arrive with the first version of the app._
+You need [Bun](https://bun.sh) 1.3 or later.
+
+```sh
+bun install      # install dependencies
+bun run dev      # start the app at http://localhost:5173
+bun run test     # run the tests once
+bun run build    # build the app into dist/
+```
+
+`bun run typecheck` checks the TypeScript. Use `bun run test`, not `bun test`: the second runs Bun's own test runner instead of Vitest.
