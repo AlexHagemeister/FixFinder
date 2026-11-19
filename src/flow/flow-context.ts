@@ -12,13 +12,20 @@ export interface FlowState {
   photo: { file: File; url: string } | null;
   steps: Record<StepId, StepStatus>;
   result: LookupResponse | null;
-  /** A short message for Home when a run stopped early, such as when location was denied. */
+  /** A short message for Home when a run stopped early, such as when the location could not be found. */
   notice: string | null;
+  /**
+   * Set when the user denied location, which opens the Location needed screen. `phoneWillNotAsk` is true when the
+   * phone likely will not show its prompt again, so the screen lists the steps for turning location on in Settings.
+   */
+  locationNeeded: { phoneWillNotAsk: boolean } | null;
 }
 
 export interface FlowActions {
   /** Starts a report from a photo the user just took. Opens the Working screen and runs the steps. */
   startReport: (file: File) => void;
+  /** Asks for location again after a denial. The report in progress carries on from the location step, same photo. */
+  askAgain: () => void;
 }
 
 export type FlowValue = FlowState & FlowActions;

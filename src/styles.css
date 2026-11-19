@@ -39,6 +39,7 @@ button { font: inherit; color: inherit; }
 .field-name { font-size: 13px; color: var(--muted); }
 .center { text-align: center; }
 .spacer { flex: 1; }
+.spacer.short { max-height: 60px; }
 .stack { display: flex; flex-direction: column; gap: 3px; }
 .grow { flex: 1; min-width: 0; }
 /* Hidden from view and from screen readers, but still clickable from code (the file input behind Take a photo). */
@@ -141,6 +142,16 @@ button { font: inherit; color: inherit; }
   color: var(--warn-text); background: var(--surface);
 }
 
+/* Location needed: a large mark above the heading, and the steps for turning location back on. */
+.big-mark {
+  width: 64px; height: 64px; border-radius: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.big-mark.warn { background: var(--accent-soft); }
+.turn-on { gap: 6px; }
+.turn-on-title { font-size: 15px; }
+.settings-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+
 /* Primary button: full width and 58px tall, a large target near the screen edge (Fitts's law). */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -151,6 +162,8 @@ button { font: inherit; color: inherit; }
   transition: transform 80ms ease, filter 80ms ease;
 }
 .btn.primary { background: var(--accent); color: var(--accent-fg); }
+/* Text button: the quieter way out below a primary button, still a full-width 46px target. */
+.btn.text { min-height: 46px; background: none; color: var(--link); font-size: 16px; }
 /* Pressed state: phones have no hover, so every tap answers right away. */
 .btn:active { transform: scale(0.97); filter: brightness(0.9); }
 @media (prefers-reduced-motion: reduce) {
