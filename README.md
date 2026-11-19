@@ -34,11 +34,13 @@ Team chat happens in the Octopod Discord server.
 
 ## How the agent files work
 
-We build FixFinder partly with AI coding agents, tools like Claude Code, Cursor, or Codex that read and write code. An agent starts every session knowing nothing about the project. Three files at the top of this repo give it that context, so its work stays pointed at what the team has decided. They are written mainly for agents, and they change as the project does.
+We build FixFinder partly with AI coding agents, tools like Claude Code, Cursor, or Codex that read and write code. An agent starts every session knowing nothing about the project. Four files at the top of this repo give it that context, so its work stays pointed at what the team has decided. They are written mainly for agents, and they change as the project does.
 
 **[VISION.md](VISION.md) steers agents toward the goal.** It says what FixFinder is for, in three parts. Core holds what stays true however the app gets built, and an agent that runs into a conflict with Core stops and raises it instead of working around it. Possibility space holds ideas we might build. Open tensions holds questions we have not settled. The file grows with the project: ideas get added, wording changes, and a feature moves into Core once the team decides FixFinder needs it. It holds no tasks, order, or status. Those live in issues.
 
 **[DESIGN-VOCABULARY.md](DESIGN-VOCABULARY.md) gives the team and its agents shared design terms.** It defines the CS 160 vocabulary: affordances, signifiers, the two gulfs, Nielsen's heuristics, and more. Agents use these terms when they discuss or review design, so their feedback connects back to the course. The file changes when the team decides to add or reword a term.
+
+**[GLOSSARY.md](GLOSSARY.md) gives everyone one word for each thing in FixFinder.** It defines the app's own terms (problem, report, responsible party, case) and lists the words to avoid, so teammates and agents mean the same thing in conversation, issues, code, and on screen. It also names the screens and UI elements, so "x on the y screen" has an answer. A term gets added when the team settles on a word.
 
 **[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the two files above and sets how they write design findings. A rule we want every agent to follow goes here.
 
