@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FixFinder Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: one phone-width column. Each screen scrolls its content above a pinned action bar, so the main action is always in thumb reach. */
+:root{
+  --bg:#F6F5F1; --surface:#FFFFFF; --fg:#15171C; --muted:#4A4F5C; --line:#E2E0D8; --line-soft:#EEECE6; --press:#ECEAE3;
+  --accent:#C2410C; --accent-fg:#FFFFFF; --accent-soft:#FDF1EA; --accent-track:#F3D3C2; --warn-text:#9A3412;
+  --link:#1D4ED8; --ok:#166534; --ok-fg:#FFFFFF; --ok-text:#166534; --ok-soft:#E8F5EC;
+  --pending:#C9C6BC; --scrim:rgba(14,15,18,.45); --photo-bg:#55585E;
+  --font-display:'Space Grotesk', system-ui, sans-serif;
+  --font-body:Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121316; --surface:#1C1E22; --fg:#F2F1EC; --muted:#A9ADB8; --line:#2E3036; --line-soft:#26282D; --press:#2A2C31;
+    --accent:#C2410C; --accent-fg:#FFFFFF; --accent-soft:#3A2418; --accent-track:#5A3523; --warn-text:#F5A26F;
+    --link:#8AB4FF; --ok:#1F8A4C; --ok-fg:#FFFFFF; --ok-text:#7EE2A0; --ok-soft:#16301F;
+    --pending:#4A4D55; --scrim:rgba(0,0,0,.6); --photo-bg:#3A3C40; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1C1E22; --fg:#F2F1EC; --muted:#A9ADB8; --line:#2E3036; --line-soft:#26282D; --press:#2A2C31;
+  --accent:#C2410C; --accent-fg:#FFFFFF; --accent-soft:#3A2418; --accent-track:#5A3523; --warn-text:#F5A26F;
+  --link:#8AB4FF; --ok:#1F8A4C; --ok-fg:#FFFFFF; --ok-text:#7EE2A0; --ok-soft:#16301F;
+  --pending:#4A4D55; --scrim:rgba(0,0,0,.6); --photo-bg:#3A3C40; color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0}
+body{background:var(--bg); color:var(--fg); font-family:var(--font-body); font-size:16px; -webkit-font-smoothing:antialiased}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+.app{position:relative; max-width:440px; height:100%; margin:0 auto; display:flex; flex-direction:column; overflow:hidden}
+.screen{flex:1; min-height:0; display:flex; flex-direction:column}
+.scroll{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:16px;
+  padding-block:20px 20px; padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px))}
+.actions{flex-shrink:0; display:flex; flex-direction:column; gap:6px; background:var(--bg); border-top:1px solid var(--line-soft);
+  padding-block:12px 16px; padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px))}
+.spacer{flex:1}
+h1,h2{margin:0; font-family:var(--font-display); font-weight:700; letter-spacing:-.015em; line-height:1.08; text-wrap:balance}
+.h-xl{font-size:38px} .h-l{font-size:28px} .h-m{font-size:22px}
+p{margin:0}
+.lead{font-size:17px; line-height:1.5; color:var(--muted)}
+.small{font-size:14px; line-height:1.45; color:var(--muted)}
+.label{font-size:13px; color:var(--muted)}
+.eyebrow{font-size:12px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; color:var(--muted)}
+.center{text-align:center}
+button{font:inherit; color:inherit}
+:focus-visible{outline:3px solid var(--link); outline-offset:2px}
+
+.brand{display:flex; align-items:center; gap:10px; min-height:44px}
+.brand span{font-family:var(--font-display); font-weight:700; font-size:22px}
+.top{display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px}
+.back{display:inline-flex; align-items:center; gap:4px; min-height:44px; padding:0 6px 0 0; background:none; border:none; border-radius:10px; color:var(--link); font-weight:500; font-size:16px; cursor:pointer}
+
+.btn{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; min-height:58px; border:none; border-radius:16px; font-weight:600; font-size:18px; cursor:pointer; text-decoration:none; flex-shrink:0}
+.btn.primary{background:var(--accent); color:var(--accent-fg)}
+.btn.text{min-height:46px; background:none; color:var(--link); font-size:16px}
+.proto-link{align-self:center; min-height:44px; padding:0 8px; background:none; border:none; border-radius:10px; color:var(--muted); font-size:13px; text-decoration:underline; text-underline-offset:3px; cursor:pointer}
+
+/* Pressed state: phones have no hover, so every tap answers right away. */
+.btn, .row, .opt, .back, .proto-link, .thumb-btn{transition:transform 80ms ease, filter 80ms ease, background-color 80ms ease}
+.btn:active, .opt:active, .thumb-btn:active{transform:scale(.97); filter:brightness(.9)}
+.row:active, .back:active, .proto-link:active, .btn.text:active{background:var(--press)}
+@media (prefers-reduced-motion: reduce){
+  .btn:active, .opt:active, .thumb-btn:active{transform:none}
+}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:16px}
+.pad{padding:14px 16px}
+.stack{display:flex; flex-direction:column; gap:4px}
+.row-between{display:flex; justify-content:space-between; align-items:center; gap:12px}
+.pill{font-size:13px; font-weight:600; padding:3px 10px; border-radius:999px; color:var(--ok-text); background:var(--ok-soft); white-space:nowrap}
+
+.chip{font-size:12px; font-weight:600; padding:2px 8px; border-radius:999px; white-space:nowrap}
+.chip.sure{color:var(--ok-text); background:var(--ok-soft)}
+.chip.unsure{color:var(--warn-text); background:var(--accent-soft)}
+.chip.mine{color:var(--muted); background:var(--line-soft)}
+.label-row{display:flex; align-items:center; gap:8px}
+
+.thumb{width:72px; height:72px; flex-shrink:0; border-radius:12px; object-fit:cover; background:var(--photo-bg); display:block}
+.thumb-btn{position:relative; flex-shrink:0; padding:0; border:none; background:none; border-radius:12px; cursor:pointer}
+.thumb-btn .thumb{width:84px; height:84px}
+.thumb-hint{position:absolute; right:4px; bottom:4px; width:24px; height:24px; border-radius:12px; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center}
+.review-head{display:flex; gap:14px; align-items:center}
+
+/* Working steps */
+.steps{padding:4px 16px}
+.step{display:flex; gap:14px; align-items:flex-start; padding:14px 0; border-bottom:1px solid var(--line-soft)}
+.step:last-child{border-bottom:none}
+.mark{width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center}
+.mark.done{border-radius:14px; background:var(--ok)}
+.spin{width:22px; height:22px; border-radius:50%; border:3px solid var(--accent-track); border-top-color:var(--accent); animation:spin .9s linear infinite}
+.wait{width:20px; height:20px; border-radius:50%; border:2px solid var(--pending)}
+.step-label{font-size:16px; font-weight:600}
+.step.pending .step-label{color:var(--muted)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin, .big-spin{animation:none; border-right-color:var(--accent)}}
+
+/* Review rows */
+.rows{display:flex; flex-direction:column; overflow:hidden}
+.row{display:flex; align-items:center; gap:12px; width:100%; min-height:68px; padding:12px 16px; background:none; border:none; border-bottom:1px solid var(--line-soft); text-align:left; cursor:pointer}
+.row .grow{flex:1; min-width:0}
+.row .value{font-size:17px; font-weight:600}
+.row .change{font-size:14px; font-weight:600; color:var(--link)}
+.party{display:flex; align-items:flex-start; gap:12px; padding:14px 16px}
+.source{display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:500; color:var(--link); text-decoration:none}
+.source:hover{text-decoration:underline}
+
+/* Overlays: picker sheet and enlarged photo */
+.layer{position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end; z-index:5}
+.layer.middle{justify-content:center; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.scrim{position:absolute; inset:0; border:none; background:var(--scrim); cursor:pointer}
+.sheet{position:relative; background:var(--surface); border-radius:22px 22px 0 0; display:flex; flex-direction:column; gap:12px;
+  padding-block:12px calc(24px + env(safe-area-inset-bottom, 0px)); padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px))}
+.grabber{align-self:center; width:40px; height:5px; border-radius:3px; background:var(--line)}
+.opt{display:flex; align-items:center; gap:12px; width:100%; min-height:58px; padding:10px 14px; border-radius:14px; border:1px solid var(--line); background:var(--surface); text-align:left; cursor:pointer}
+.opt.on{border:2px solid var(--accent); background:var(--accent-soft)}
+.opt .grow{flex:1}
+.zoom{position:relative; display:flex; flex-direction:column; gap:10px}
+.zoom img{display:block; width:100%; max-width:100%; border-radius:14px; background:var(--photo-bg)}
+.zoom .btn{background:var(--surface); color:var(--fg)}
+.photo-tag{position:absolute; left:10px; top:10px; font-size:12px; color:#FFFFFF; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:6px}
+
+textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--fg); font:15px/1.5 var(--font-body)}
+
+.status-track{display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px}
+.status-track .bar{height:6px; border-radius:3px; background:var(--line)}
+.status-track .bar.on{background:var(--ok)}
+.status-track span{display:block; margin-top:6px; font-size:14px; color:var(--muted)}
+.status-track .now span{color:var(--fg); font-weight:600}
+
+.big-mark{width:64px; height:64px; border-radius:32px; display:flex; align-items:center; justify-content:center; flex-shrink:0}
+.big-mark.ok{background:var(--ok)}
+.big-mark.warn{background:var(--accent-soft)}
+.big-spin{width:48px; height:48px; border-radius:50%; border:5px solid var(--accent-track); border-top-color:var(--accent); animation:spin .9s linear infinite}
+
+/* Tab bar: the main places. Shown on Report, My reports, and Settings. Hidden during the report flow so a tap cannot drop a draft. */
+.tabbar{flex-shrink:0; display:flex; background:var(--surface); border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom, 0px); padding-left:env(safe-area-inset-left, 0px); padding-right:env(safe-area-inset-right, 0px)}
+.tab{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:56px; padding:6px 0 4px; background:none; border:none; color:var(--muted); font-size:11px; font-weight:500; cursor:pointer; transition:background-color 80ms ease}
+.tab[aria-current="page"]{color:var(--fg); font-weight:700}
+.tab:active{background:var(--press)}
+.report-card{display:flex; flex-direction:column; gap:12px}
+.report-card .status-track span{font-size:12px}
+.settings-row{display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:56px; padding:10px 16px; border-bottom:1px solid var(--line-soft)}
+.settings-row:last-child{border-bottom:none}
+.settings-row .value{font-size:15px; color:var(--muted); text-align:right}
+
+/* Home cards */
+.section-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:8px}
+.btn.small{min-height:44px; width:auto; padding:0 16px; border-radius:12px; font-size:15px; background:var(--line-soft); color:var(--fg)}
+.btn.small.on{background:var(--ok-soft); color:var(--ok-text)}
+.btn-row{display:flex; gap:8px}
+.btn-row .btn.small{flex:1}
+.link-btn{align-self:flex-start; min-height:44px; padding:0; background:none; border:none; color:var(--link); font-size:15px; font-weight:600; cursor:pointer}
+.near-card{display:flex; align-items:center; gap:12px}
+.near-card .grow{flex:1; min-width:0}
+</style>
+</head>
+<body>
+
+<div class="app" id="app" aria-live="polite"></div>
+<input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+
+<script>
+(function(){
+  var ICON = {
+    wrench:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    camera:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>',
+    back:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+    expand:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>',
+    check:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ok-fg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    checkBig:'<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--ok-fg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    checkAccent:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    tag:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l8.59-8.59a1 1 0 0 0 0-1.41Z"/><circle cx="7" cy="7" r="1.5"/></svg>',
+    pin:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+    pinOff:'<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/><path d="M3 3l18 18"/></svg>',
+    building:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:2px"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M10 21v-5h4v5"/></svg>',
+    ext:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+    tabHome:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>',
+    tabReports:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none"/></svg>',
+    tabSettings:'<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>'
+  };
+  var TABS = [
+    { screen:'start', label:'Home', icon:'tabHome' },
+    { screen:'reports', label:'My reports', icon:'tabReports' },
+    { screen:'settings', label:'Settings', icon:'tabSettings' }
+  ];
+  var STATUSES = ['Submitted', 'Received', 'Resolved'];
+
+  var SAMPLE = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">' +
+    '<rect width="400" height="300" fill="#5A5D63"/>' +
+    '<rect x="0" y="150" width="400" height="7" fill="#D9C760" opacity=".55"/>' +
+    '<ellipse cx="205" cy="178" rx="122" ry="54" fill="#2E3034"/>' +
+    '<ellipse cx="205" cy="172" rx="104" ry="40" fill="#1E2023"/>' +
+    '<ellipse cx="180" cy="168" rx="30" ry="9" fill="#34373C" opacity=".7"/>' +
+    '<circle cx="70" cy="70" r="3" fill="#6E7177"/><circle cx="320" cy="60" r="2" fill="#6E7177"/><circle cx="350" cy="250" r="3" fill="#6E7177"/><circle cx="40" cy="240" r="2" fill="#6E7177"/>' +
+    '</svg>');
+
+  var CATS = [
+    { label:'Pothole', hint:'Best match', phrase:'a pothole' },
+    { label:'Damaged sidewalk', hint:'Also possible', phrase:'a damaged section of sidewalk' },
+    { label:'Debris in the road', hint:'Also possible', phrase:'debris in the road' }
+  ];
+  var LOCS = [
+    { label:'Shattuck Ave & Cedar St', hint:'Closest to you, but not certain' },
+    { label:'Shattuck Ave & Vine St', hint:'Nearby' }
+  ];
+  var PARTY = 'Berkeley Public Works';
+
+  var S = {
+    screen:'start', photo:null, cat:0, loc:0, sheet:null, zoom:false, step:0,
+    desc:'', descEdited:false,
+    returning:true, followed:{}, stillAnswer:null,
+    reports:[
+      { cat:'Broken streetlight', loc:'Telegraph Ave & Dwight Way', status:'Received', when:'Nov 12', sample:true },
+      { cat:'Missing street sign', loc:'Hearst Ave & Oxford St', status:'Resolved', when:'Oct 28', sample:true }
+    ]
+  };
+  // Sample content for possible future features (Shared problems, Keeping reports current in VISION.md). Not real reports.
+  var NEAR = [
+    { cat:'Pothole', loc:'Shattuck Ave & Rose St', people:4, when:'2 days ago' },
+    { cat:'Damaged sidewalk', loc:'Vine St & Walnut St', people:2, when:'last week' }
+  ];
+  var STILL = { cat:'Graffiti', loc:'Milvia St & Allston Way', when:'3 weeks ago' };
+  var STATUS_LINE = {
+    Submitted:'Sent to ' + PARTY + '. Waiting for them to receive it.',
+    Received:PARTY + ' received it.',
+    Resolved:PARTY + ' marked it fixed.'
+  };
+  var timer = null;
+  var app = document.getElementById('app');
+  var input = document.getElementById('photo-input');
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function photoSrc(){ return S.photo || SAMPLE; }
+  function defaultDesc(){ return 'There is ' + CATS[S.cat].phrase + ' at ' + LOCS[S.loc].label + ', Berkeley. Photo attached.'; }
+  function stopTimer(){ if (timer){ clearInterval(timer); clearTimeout(timer); timer = null; } }
+  function reset(){ stopTimer(); S.photo = null; S.cat = 0; S.loc = 0; S.sheet = null; S.zoom = false; S.step = 0; S.desc = ''; S.descEdited = false; }
+  function go(screen){ S.screen = screen; render(); var sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = 0; }
+  function screen(body, actions, scrollStyle){
+    return '<section class="screen"><div class="scroll"' + (scrollStyle ? ' style="' + scrollStyle + '"' : '') + '>' + body + '</div>' +
+      (actions ? '<div class="actions">' + actions + '</div>' : '') + '</section>';
+  }
+  function chip(kind, text){ return '<span class="chip ' + kind + '">' + text + '</span>'; }
+  function visibleReports(){ return S.reports.filter(function(r){ return S.returning || !r.sample; }); }
+  function sectionHead(title, future){
+    return '<div class="section-head"><span class="eyebrow">' + title + '</span>' + (future ? chip('mine', 'Possible future feature · sample') : '') + '</div>';
+  }
+  function tabbar(){
+    return '<nav class="tabbar" aria-label="Main">' + TABS.map(function(t){
+      return '<button type="button" class="tab" data-act="tab" data-tab="' + t.screen + '"' + (S.screen === t.screen ? ' aria-current="page"' : '') + '>' + ICON[t.icon] + '<span>' + t.label + '</span></button>';
+    }).join('') + '</nav>';
+  }
+  function statusTrack(status){
+    var at = STATUSES.indexOf(status);
+    return '<div class="status-track">' + STATUSES.map(function(s, i){
+      return '<div' + (i === at ? ' class="now"' : '') + '><div class="bar' + (i <= at ? ' on' : '') + '"></div><span>' + s + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  function startWorking(){
+    stopTimer(); S.step = 0; go('working');
+    timer = setInterval(function(){
+      S.step += 1; render();
+      if (S.step >= 4){
+        clearInterval(timer);
+        timer = setTimeout(function(){ timer = null; go('review'); }, 800);
+      }
+    }, 1100);
+  }
+
+  var views = {
+    start: function(){
+      var mine = visibleReports();
+      var body = '<div class="brand">' + ICON.wrench + '<span>FixFinder</span></div>';
+      if (!mine.length && !S.returning){
+        body +=
+          '<div class="spacer"></div>' +
+          '<h1 class="h-xl">See something broken?</h1>' +
+          '<p class="lead">Take a photo. FixFinder works out who is responsible for fixing it and drafts the report. You check it before it goes anywhere.</p>' +
+          '<div class="spacer"></div>' +
+          '<p class="small center">FixFinder will ask for your location to find who is responsible.</p>';
+      } else {
+        body +=
+          '<h1 class="h-l" style="margin-top:4px">See something broken?</h1>' +
+          '<p class="small">Take a photo below. FixFinder finds who is responsible and drafts the report for you to check.</p>';
+        if (mine.length){
+          var r = mine[0];
+          body += sectionHead('Your latest report', false) +
+            '<div class="card pad stack" style="gap:8px">' +
+              '<div class="row-between"><strong style="font-size:16px">' + esc(r.cat) + '</strong><span class="pill">' + esc(r.status) + '</span></div>' +
+              '<span class="small">' + esc(r.loc) + '</span>' +
+              '<span style="font-size:15px">' + esc(STATUS_LINE[r.status]) + '</span>' +
+              '<button type="button" class="link-btn" data-act="tab" data-tab="reports">See all your reports</button>' +
+            '</div>';
+        }
+        if (S.returning){
+          body += sectionHead('Problems near you', true) +
+            NEAR.map(function(n, i){
+              var on = !!S.followed[i];
+              return '<div class="card pad near-card"><div class="grow stack" style="gap:2px"><strong style="font-size:16px">' + esc(n.cat) + '</strong>' +
+                '<span class="small">' + esc(n.loc) + '</span><span class="label">Reported by ' + n.people + ' people · ' + n.when + '</span></div>' +
+                '<button type="button" class="btn small' + (on ? ' on' : '') + '" data-act="follow" data-i="' + i + '" aria-pressed="' + on + '">' + (on ? 'Following' : 'Follow') + '</button></div>';
+            }).join('') +
+            sectionHead('Is this still there?', true) +
+            '<div class="card pad stack" style="gap:10px"><div class="stack" style="gap:2px"><strong style="font-size:16px">' + esc(STILL.cat) + '</strong>' +
+              '<span class="small">' + esc(STILL.loc) + ' · reported ' + STILL.when + '</span></div>' +
+              (S.stillAnswer ? '<span style="font-size:15px;color:var(--ok-text);font-weight:600">Thanks for checking. You said: ' + S.stillAnswer + '.</span>'
+                : '<div class="btn-row"><button type="button" class="btn small" data-act="still" data-v="still there">Still there</button><button type="button" class="btn small" data-act="still" data-v="it is gone">It is gone</button></div>') +
+            '</div>';
+        }
+      }
+      body +=
+        '<button type="button" class="proto-link" data-act="persona">Prototype: see as a ' + (S.returning ? 'new' : 'returning') + ' user</button>' +
+        '<button type="button" class="proto-link" data-act="denied" style="margin-top:-12px">Prototype: see the location-denied screen</button>';
+      return screen(body,
+        '<label for="photo-input" class="btn primary">' + ICON.camera + 'Take a photo</label>' +
+        '<button type="button" class="btn text" data-act="sample">Use a sample photo instead</button>'
+      );
+    },
+
+    reports: function(){
+      var list = visibleReports();
+      if (!list.length){
+        return screen(
+          '<h1 class="h-l" style="margin-top:8px">My reports</h1>' +
+          '<div class="card pad stack" style="gap:6px"><strong>No reports yet</strong><span class="small">Reports you send show up here with their report status.</span></div>'
+        );
+      }
+      var cards = list.map(function(r){
+        return '<div class="card pad report-card">' +
+          '<div class="stack" style="gap:3px"><div class="row-between"><strong style="font-size:16px">' + esc(r.cat) + '</strong><span class="label">' + esc(r.when) + '</span></div>' +
+          '<span class="small">' + esc(r.loc) + ' · ' + PARTY + '</span>' +
+          '<span class="label">Case number: [case number]</span></div>' +
+          statusTrack(r.status) + '</div>';
+      }).join('');
+      return screen(
+        '<h1 class="h-l" style="margin-top:8px">My reports</h1>' +
+        '<p class="small">FixFinder shows the report status when the agency publishes it.</p>' +
+        cards
+      );
+    },
+
+    settings: function(){
+      return screen(
+        '<h1 class="h-l" style="margin-top:8px">Settings</h1>' +
+        '<div class="card">' +
+          '<div class="settings-row"><span>Reports are sent from</span><span class="value">[Your email or a FixFinder address]</span></div>' +
+          '<div class="settings-row"><span>Location</span><span class="value">Asked when you report</span></div>' +
+          '<div class="settings-row"><span>Appearance</span><span class="value">Matches your phone</span></div>' +
+        '</div>' +
+        '<p class="small">Prototype: these settings are placeholders and do nothing yet.</p>'
+      );
+    },
+
+    working: function(){
+      var defs = [
+        ['Reading the photo', 'Working out what the problem is', 'Looks like ' + CATS[S.cat].phrase],
+        ['Pinning down the location', 'Turning your location into an address', LOCS[S.loc].label + ', Berkeley'],
+        ['Finding who is responsible', 'Checking who maintains this location', PARTY],
+        ['Drafting the report', 'Writing it up for you to check', 'Draft ready']
+      ];
+      var done = S.step >= 4;
+      var steps = defs.map(function(d, i){
+        var state = i < S.step ? 'done' : (i === S.step ? 'current' : 'pending');
+        var mark = state === 'done' ? '<div class="mark done">' + ICON.check + '</div>'
+                 : state === 'current' ? '<div class="mark"><div class="spin"></div></div>'
+                 : '<div class="mark"><div class="wait"></div></div>';
+        var detail = state === 'done' ? d[2] : (state === 'current' ? d[1] : 'Waiting');
+        return '<div class="step ' + state + '">' + mark + '<div class="stack" style="gap:3px"><span class="step-label">' + d[0] + '</span><span class="small">' + esc(detail) + '</span></div></div>';
+      }).join('');
+      return screen(
+        '<div class="top"><button type="button" class="back" data-act="cancel">Cancel</button><span class="small">' + (done ? 'All 4 steps done' : 'Step ' + (S.step + 1) + ' of 4') + '</span></div>' +
+        '<div style="display:flex;gap:14px;align-items:center"><img class="thumb" src="' + photoSrc() + '" alt="Your photo">' +
+          '<div class="stack"><span class="eyebrow">Your photo</span><span style="font-size:15px">Taken just now' + (S.photo ? '' : ' (sample)') + '</span></div></div>' +
+        '<h1 class="h-l">' + (done ? 'Your report is drafted' : 'Working on your report') + '</h1>' +
+        '<div class="card steps">' + steps + '</div>'
+      );
+    },
+
+    review: function(){
+      var overlay = '';
+      if (S.sheet){
+        var isLoc = S.sheet === 'loc';
+        var list = isLoc ? LOCS : CATS, picked = isLoc ? S.loc : S.cat;
+        var opts = list.map(function(o, i){
+          return '<button type="button" class="opt' + (i === picked ? ' on' : '') + '" data-act="pick" data-i="' + i + '">' +
+            '<span class="grow stack" style="gap:2px"><span style="font-size:16px;font-weight:600">' + esc(o.label) + '</span><span class="label">' + o.hint + '</span></span>' +
+            (i === picked ? ICON.checkAccent : '') + '</button>';
+        }).join('');
+        overlay = '<div class="layer"><button type="button" class="scrim" aria-label="Close" data-act="close"></button>' +
+          '<div class="sheet" role="dialog" aria-label="' + (isLoc ? 'Change the location' : 'Change the category') + '"><div class="grabber"></div>' +
+          '<h2 class="h-m">' + (isLoc ? 'Where is the problem?' : 'What is the problem?') + '</h2>' +
+          '<p class="small">' + (isLoc ? 'Pick the closest match. FixFinder uses it to find who is responsible.' : 'FixFinder ranked these from your photo.') + '</p>' +
+          '<div class="stack" style="gap:10px">' + opts + '</div></div></div>';
+      } else if (S.zoom){
+        overlay = '<div class="layer middle"><button type="button" class="scrim" aria-label="Close" data-act="close"></button>' +
+          '<div class="zoom" role="dialog" aria-label="Your photo"><img src="' + photoSrc() + '" alt="Your photo of the problem">' +
+          (S.photo ? '' : '<span class="photo-tag">Sample photo</span>') +
+          '<button type="button" class="btn" data-act="close">Close</button></div></div>';
+      }
+      var catChip = S.cat === 0 ? chip('sure', 'Best match') : chip('mine', 'Your pick');
+      var locChip = S.loc === 0 ? chip('unsure', 'Unsure') : chip('mine', 'Your pick');
+      return screen(
+        '<div class="top"><button type="button" class="back" data-act="retake">' + ICON.back + 'Retake photo</button></div>' +
+        '<div class="review-head">' +
+          '<button type="button" class="thumb-btn" data-act="zoom" aria-label="Enlarge your photo"><img class="thumb" src="' + photoSrc() + '" alt=""><span class="thumb-hint">' + ICON.expand + '</span></button>' +
+          '<div class="stack" style="gap:6px;min-width:0"><h1 class="h-l">Here is what FixFinder found</h1></div>' +
+        '</div>' +
+        '<p class="small">Tap the category or location to change it.</p>' +
+        '<div class="card rows">' +
+          '<button type="button" class="row" data-act="sheet" data-sheet="cat">' + ICON.tag + '<span class="grow stack" style="gap:3px"><span class="label-row"><span class="label">Category</span>' + catChip + '</span><span class="value">' + esc(CATS[S.cat].label) + '</span></span><span class="change">Change</span></button>' +
+          '<button type="button" class="row" data-act="sheet" data-sheet="loc">' + ICON.pin + '<span class="grow stack" style="gap:3px"><span class="label-row"><span class="label">Location</span>' + locChip + '</span><span class="value">' + esc(LOCS[S.loc].label) + '</span></span><span class="change">Change</span></button>' +
+          '<div class="party">' + ICON.building + '<div class="stack" style="flex:1;min-width:0"><span class="label">Responsible party</span><span style="font-size:17px;font-weight:600">' + PARTY + '</span>' +
+            '<span class="small">Picked from the category and location. [Reason from the source]</span>' +
+            '<a class="source" href="#source" data-act="noop">Source: City of Berkeley, [streets page] ' + ICON.ext + '</a></div></div>' +
+        '</div>',
+        '<button type="button" class="btn primary" data-act="to-draft">Looks right, draft the report</button>'
+      ) + overlay;
+    },
+
+    draft: function(){
+      if (!S.descEdited) S.desc = defaultDesc();
+      return screen(
+        '<div class="top"><button type="button" class="back" data-act="to-review">' + ICON.back + 'Back to the guess</button></div>' +
+        '<h1 class="h-l">Check the report</h1>' +
+        '<div class="card pad stack" style="gap:6px"><span class="label">Goes to</span><span style="font-size:17px;font-weight:600">' + PARTY + '</span>' +
+          '<span class="small">Reporting channel: online portal, [portal URL]</span>' +
+          '<a class="source" href="#source" data-act="noop">Source: City of Berkeley, [streets page]</a></div>' +
+        '<div class="card pad stack" style="gap:12px">' +
+          '<div style="display:flex;gap:12px;align-items:center"><img class="thumb" src="' + photoSrc() + '" alt="Your photo">' +
+            '<div class="stack" style="gap:2px"><strong>' + esc(CATS[S.cat].label) + '</strong><span class="small">' + esc(LOCS[S.loc].label) + ', Berkeley</span><span class="label">Photo attached</span></div></div>' +
+          '<div class="stack" style="gap:8px"><label for="desc" class="label">Description, drafted by FixFinder. Edit anything.</label>' +
+          '<textarea id="desc" data-input="desc">' + esc(S.desc) + '</textarea></div>' +
+        '</div>',
+        '<p class="small center">Nothing is sent until you tap Submit.</p>' +
+        '<button type="button" class="btn primary" data-act="submit">Submit report</button>'
+      );
+    },
+
+    sending: function(){
+      return screen(
+        '<div class="big-spin" aria-hidden="true"></div>' +
+        '<h1 class="h-l">Sending your report</h1>' +
+        '<p class="lead">Submitting to ' + PARTY + ' through their online portal.</p>',
+        '', 'justify-content:center;align-items:center;text-align:center;gap:20px'
+      );
+    },
+
+    sent: function(){
+      return screen(
+        '<div class="spacer" style="max-height:40px"></div>' +
+        '<div class="big-mark ok">' + ICON.checkBig + '</div>' +
+        '<h1 class="h-xl">Report sent</h1>' +
+        '<p class="lead">FixFinder submitted your report to ' + PARTY + ' through their online portal, and the portal confirmed it.</p>' +
+        '<div class="card pad stack" style="gap:16px">' +
+          '<div class="row-between"><span class="label">Case number</span><strong>[case number]</strong></div>' +
+          '<div class="stack" style="gap:10px"><span class="label">Report status</span>' +
+            '<div class="status-track"><div class="now"><div class="bar on"></div><span>Submitted</span></div><div><div class="bar"></div><span>Received</span></div><div><div class="bar"></div><span>Resolved</span></div></div></div>' +
+          '<div class="stack" style="gap:2px;border-top:1px solid var(--line-soft);padding-top:12px"><strong>' + esc(CATS[S.cat].label) + '</strong><span class="small">' + esc(LOCS[S.loc].label) + ', Berkeley</span></div>' +
+        '</div>',
+        '<button type="button" class="btn primary" data-act="done">Done</button>' +
+        '<button type="button" class="btn text" data-act="another">Report another problem</button>'
+      );
+    },
+
+    denied: function(){
+      return screen(
+        '<div class="spacer" style="max-height:60px"></div>' +
+        '<div class="big-mark warn">' + ICON.pinOff + '</div>' +
+        '<h1 class="h-l">FixFinder needs your location</h1>' +
+        '<p class="lead">Who fixes a problem depends on where it is. Without your location, FixFinder cannot find the responsible party, so it stops here.</p>' +
+        '<div class="card pad stack" style="gap:6px"><strong style="font-size:15px">To turn it on</strong>' +
+          '<span class="small">Tap Ask again, then choose Allow when your browser asks. If it does not ask, turn on location for this site in your browser settings.</span></div>',
+        '<button type="button" class="btn primary" data-act="ask-again">Ask again</button>' +
+        '<button type="button" class="btn text" data-act="home">Not now</button>'
+      );
+    }
+  };
+
+  function isTab(s){ return TABS.some(function(t){ return t.screen === s; }); }
+  var lastScreen = null;
+  function render(){
+    var old = app.querySelector('.scroll'), keep = (old && lastScreen === S.screen) ? old.scrollTop : 0;
+    app.innerHTML = views[S.screen]() + (isTab(S.screen) ? tabbar() : '');
+    lastScreen = S.screen;
+    var sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = keep;
+  }
+
+  function saveLast(){ S.reports.unshift({ cat:CATS[S.cat].label, loc:LOCS[S.loc].label, status:'Submitted', when:'Today' }); }
+
+  app.addEventListener('click', function(e){
+    var el = e.target.closest('[data-act]');
+    if (!el) return;
+    var act = el.getAttribute('data-act');
+    switch (act){
+      case 'tab': go(el.getAttribute('data-tab')); break;
+      case 'persona': S.returning = !S.returning; go('start'); break;
+      case 'follow': var f = el.getAttribute('data-i'); S.followed[f] = !S.followed[f]; render(); break;
+      case 'still': S.stillAnswer = el.getAttribute('data-v'); render(); break;
+      case 'sample': S.photo = null; startWorking(); break;
+      case 'denied': go('denied'); break;
+      case 'ask-again': case 'home': case 'cancel': case 'retake': reset(); go('start'); break;
+      case 'sheet': S.sheet = el.getAttribute('data-sheet'); render(); break;
+      case 'zoom': S.zoom = true; render(); break;
+      case 'close': S.sheet = null; S.zoom = false; render(); break;
+      case 'pick':
+        var i = Number(el.getAttribute('data-i'));
+        if (S.sheet === 'loc') S.loc = i; else S.cat = i;
+        S.sheet = null; render(); break;
+      case 'to-draft': go('draft'); break;
+      case 'to-review': go('review'); break;
+      case 'submit':
+        go('sending');
+        timer = setTimeout(function(){ timer = null; go('sent'); }, 1500);
+        break;
+      case 'done': case 'another': saveLast(); reset(); go('start'); break;
+      case 'noop': e.preventDefault(); break;
+    }
+  });
+
+  app.addEventListener('input', function(e){
+    if (e.target.getAttribute('data-input') === 'desc'){ S.desc = e.target.value; S.descEdited = true; }
+  });
+
+  input.addEventListener('change', function(){
+    var f = input.files && input.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function(){ S.photo = r.result; input.value = ''; startWorking(); };
+    r.readAsDataURL(f);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
