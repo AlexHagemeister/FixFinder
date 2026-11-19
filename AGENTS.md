@@ -7,6 +7,11 @@
 - Naming a new screen, flow, or UI element is part of building it: add the name under the glossary's Screens and flows heading in the same PR.
 - How the app is built, tested, and deployed lives in [README.md § How FixFinder is built and shipped](README.md#how-fixfinder-is-built-and-shipped). Read it there, and change it there when it changes.
 
+## Logging the app's AI mistakes
+
+- When you see FixFinder's AI step give a wrong or bad answer while building or testing, add an entry to [docs/ai-failure-log.md](docs/ai-failure-log.md), following its instructions. Then note "Failure log: added entry N" in the related issue or PR.
+- Only mistakes by the app's own AI step go in the log. Your own mistakes as a coding agent do not, and neither does the stand-in's sample output.
+
 ## Reviewing pull requests
 
 - Whenever you are asked to review a PR, however the request is worded, follow [REVIEWING.md](REVIEWING.md).
