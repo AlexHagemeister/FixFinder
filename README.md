@@ -42,7 +42,7 @@ We build FixFinder partly with AI coding agents, tools like Claude Code, Cursor,
 
 **[GLOSSARY.md](GLOSSARY.md) gives everyone one word for each thing in FixFinder.** It defines the app's own terms (problem, report, responsible party, case) and lists the words to avoid, so teammates and agents mean the same thing in conversation, issues, code, and on screen. It also names the screens and UI elements, so "x on the y screen" has an answer. A term gets added when the team settles on a word.
 
-**[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the three files above and sets how they write design findings. A rule we want every agent to follow goes here.
+**[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the three files above and at this README's build section, and sets how they write design findings. A rule we want every agent to follow goes here.
 
 **[REVIEWING.md](REVIEWING.md) is the checklist a reviewing agent follows.** It is not session context like the four files above: agents read it only when they review a PR, so it costs nothing the rest of the time.
 
@@ -56,6 +56,18 @@ When a design call comes up, name the principle at stake ("this is a gulf of eva
 - **Every PR gets offered a second look.** Before you merge, your agent offers a review by a fresh agent. To ask for one yourself, open a new agent session and paste: `Review PR <number> in this repo by following REVIEWING.md.`
 
 This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeister/gnadd](https://github.com/AlexHagemeister/gnadd).
+
+## How FixFinder is built and shipped
+
+**What it's made of.** FixFinder is a web app written in TypeScript with React. A tool called Vite turns that code into plain web files (HTML, JavaScript, CSS) that any phone browser can open. Bun installs the packages and runs the project's scripts, like `bun run build`.
+
+**Where it lives.** Cloudflare hosts those files on its free plan. Nobody on the team pays anything for hosting.
+
+**What happens when you push a branch.** Cloudflare builds the branch and puts it at its own preview link, so you can try your change on a phone before anyone merges it. The link is the branch name with slashes turned into dashes, then `-fixfinder.alexhagemeister.workers.dev`. For example, the branch `issue-1/phone-app-shell` lives at `issue-1-phone-app-shell-fixfinder.alexhagemeister.workers.dev`.
+
+**What happens when you open a pull request.** Two automatic checks run on it. `ci` installs the app, checks the TypeScript, builds it, and runs the tests. `Workers Builds: fixfinder` is Cloudflare building the preview link. A red check means something broke.
+
+**What happens when a pull request merges.** Cloudflare rebuilds `main` and updates the live link. A phone that already has FixFinder on its home screen keeps the old copy until the app is closed and opened again.
 
 ## Keys and secrets
 
