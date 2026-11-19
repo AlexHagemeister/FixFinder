@@ -42,7 +42,7 @@ We build FixFinder partly with AI coding agents, tools like Claude Code, Cursor,
 
 **[GLOSSARY.md](GLOSSARY.md) gives everyone one word for each thing in FixFinder.** It defines the app's own terms (problem, report, responsible party, case) and lists the words to avoid, so teammates and agents mean the same thing in conversation, issues, code, and on screen. It also names the screens and UI elements, so "x on the y screen" has an answer. A term gets added when the team settles on a word.
 
-**[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the two files above and sets how they write design findings. A rule we want every agent to follow goes here.
+**[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the three files above and sets how they write design findings. A rule we want every agent to follow goes here.
 
 When a design call comes up, name the principle at stake ("this is a gulf of evaluation problem", "this fails Nielsen 1"). Using the course's terms is part of how the team learns them.
 
