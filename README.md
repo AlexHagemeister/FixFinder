@@ -67,7 +67,7 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 **What happens when you open a pull request.** Two automatic checks run on it. `ci` installs the app, checks the TypeScript, builds it, and runs the tests. `Workers Builds: fixfinder` is Cloudflare building the preview link. A red check means something broke.
 
-**What happens when a pull request merges.** Cloudflare rebuilds `main` and updates the live link. A phone that already has FixFinder on its home screen keeps the old copy until the app is closed and opened again.
+**What happens when a pull request merges.** Cloudflare rebuilds `main` and updates the live link. A phone that already has FixFinder open or on its home screen downloads the new version the next time the app opens, then reloads into it on its own.
 
 ## Keys and secrets
 

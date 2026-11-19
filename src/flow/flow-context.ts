@@ -8,7 +8,10 @@ export const STEP_ORDER: readonly StepId[] = ["photo", "location", "responsibleP
 export type StepStatus = "waiting" | "current" | "done";
 
 export interface FlowState {
-  /** The photo for the report in progress, held in memory only. `url` is an object URL for showing it. */
+  /**
+   * The photo for the report in progress, held in memory. `url` is an object URL for showing it. While the Location
+   * needed screen is open, a copy is also saved on the phone (see saved-photo.ts) so a reload can pick the report up.
+   */
   photo: { file: File; url: string } | null;
   steps: Record<StepId, StepStatus>;
   result: LookupResponse | null;
@@ -17,14 +20,18 @@ export interface FlowState {
   /**
    * Set when the user denied location, which opens the Location needed screen. `phoneWillNotAsk` is true when the
    * phone likely will not show its prompt again, so the screen lists the steps for turning location on in Settings.
+   * `stillOff` is true when the denial answered an Ask again, so the screen says location is still off.
    */
-  locationNeeded: { phoneWillNotAsk: boolean } | null;
+  locationNeeded: { phoneWillNotAsk: boolean; stillOff: boolean } | null;
 }
 
 export interface FlowActions {
   /** Starts a report from a photo the user just took. Opens the Working screen and runs the steps. */
   startReport: (file: File) => void;
-  /** Asks for location again after a denial. The report in progress carries on from the location step, same photo. */
+  /**
+   * Asks for location again after a denial. The report in progress carries on from the location step, same photo.
+   * It saves the photo and reloads the page, since Safari keeps a denial for the life of the page.
+   */
   askAgain: () => void;
 }
 

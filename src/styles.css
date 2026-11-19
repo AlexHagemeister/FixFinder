@@ -103,7 +103,7 @@ button { font: inherit; color: inherit; }
 .thumb { width: 72px; height: 72px; flex-shrink: 0; border-radius: 12px; object-fit: cover; background: var(--photo-bg); display: block; }
 .thumb.large { width: 84px; height: 84px; }
 
-/* Home: why a run stopped early. */
+/* Home: why a run stopped early. Location needed: location is still off after Ask again. */
 .notice {
   padding: 12px 14px; border-radius: 12px;
   background: var(--accent-soft); color: var(--warn-text);

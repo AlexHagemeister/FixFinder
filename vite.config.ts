@@ -7,8 +7,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Installed copies pick up a new build on their next launch instead of sitting on an old one.
+      // A new build takes over as soon as it is downloaded, and the page reloads into it, so an installed copy shows
+      // the new build on the first open after a deploy instead of the one after.
       registerType: "autoUpdate",
+      // src/main.tsx registers the service worker itself, so the plugin injects no register script of its own.
+      injectRegister: false,
+      // The plugin turns these on for autoUpdate only when injectRegister is "auto", so with false they are set here.
+      // Without them the new service worker waits for every open copy to close, and the reload never comes.
+      workbox: { skipWaiting: true, clientsClaim: true },
       includeAssets: ["favicon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "FixFinder",

@@ -55,7 +55,8 @@ export function LocationNeeded() {
   const { photo, locationNeeded, askAgain } = useReportFlow();
   const navigate = useNavigate();
 
-  // A reload or a direct visit has no report in memory, so there is nothing to ask again for.
+  // A direct visit has no report in memory, so there is nothing to ask again for. After a reload, app start puts
+  // the saved photo back before this screen renders (see ReportFlow).
   if (!photo || !locationNeeded) return <Navigate to="/" replace />;
 
   return (
@@ -70,6 +71,13 @@ export function LocationNeeded() {
           Who fixes a problem depends on where it is. Without your location, FixFinder cannot find the responsible
           party, so it stops here.
         </p>
+        {/* After Ask again, a second denial says so, so the tap visibly did something (Nielsen 1). An alert, not a
+            status: the line arrives with the screen, and a status region that mounts already filled is often silent. */}
+        {locationNeeded.stillOff && (
+          <p className="notice" role="alert">
+            Location is still off for FixFinder.
+          </p>
+        )}
         <div className="card pad stack turn-on">
           <strong className="turn-on-title">To turn it on</strong>
           {locationNeeded.phoneWillNotAsk ? (
