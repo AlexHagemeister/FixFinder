@@ -1,0 +1,11 @@
+// Cloudflare Workers static assets: serves the Vite build, no Worker script.
+// Deploy after `bun run build`, which writes dist/. Client routes fall back to index.html.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fixfinder",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

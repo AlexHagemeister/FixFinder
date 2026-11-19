@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dev-dist/
+*.tsbuildinfo
+
+# Cloudflare
+.wrangler/
+.dev.vars*
+
+# Secrets: never commit keys (see README "Keys and secrets")
+.env
+.env.*
+
+# Logs and editor/OS files
+*.log
+.DS_Store
+.vscode/
+.idea/
+coverage/

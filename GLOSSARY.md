@@ -53,3 +53,8 @@ _Avoid_: ticket, request, issue
 **Report status**:
 Where a report stands, from submitted to resolved, as far as FixFinder can tell. When a case exists, its status feeds the report status.
 _Avoid_: hearing back, follow-up, updates
+
+## Screens and flows
+
+**Home**:
+The first screen, where the user starts a report by taking a photo.

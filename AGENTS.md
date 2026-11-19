@@ -22,5 +22,5 @@ no progress notes. Start every session with `/prime-gnadd`. Every change
 lands through an issue, a branch, and a PR, or through `/quickfix-gnadd` for
 a trivial one. Project intent lives in `VISION.md` when present.
 
-Preview launch: (none yet: put the command or URL that starts a dev preview here)
+Preview launch: bun run dev
 <!-- /gnadd:conventions -->

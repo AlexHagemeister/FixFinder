@@ -61,7 +61,7 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 **This repo is public. Never commit an API key.**
 
-- Deployed keys live in the Vercel project's environment variable settings.
+- Deployed keys live in the Supabase project's Edge Function secrets, never in the app's own code, since everything in the app is sent to every phone.
 - Local keys go in a `.env` file on your own machine. `.env` files never get committed.
 - If a key does get committed, tell the team right away so it can be revoked. Deleting it in a later commit does not remove it from the history.
 
@@ -82,4 +82,13 @@ The app asks for your location the first time you use it. It needs your location
 
 ## Run it locally
 
-_Setup steps arrive with the first version of the app._
+You need [Bun](https://bun.sh) 1.3 or later.
+
+```sh
+bun install      # install dependencies
+bun run dev      # start the app at http://localhost:5173
+bun run test     # run the tests once
+bun run build    # build the app into dist/
+```
+
+`bun run typecheck` checks the TypeScript. Use `bun run test`, not `bun test`: the second runs Bun's own test runner instead of Vitest.
