@@ -58,3 +58,9 @@ _Avoid_: hearing back, follow-up, updates
 
 **Home**:
 The first screen, where the user starts a report by taking a photo.
+
+**Working**:
+The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked.
+
+**Result**:
+The screen that shows what FixFinder found: the user's photo, the category with a short description, the responsible party, and its source.
