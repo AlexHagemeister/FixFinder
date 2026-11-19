@@ -44,6 +44,8 @@ We build FixFinder partly with AI coding agents, tools like Claude Code, Cursor,
 
 **[AGENTS.md](AGENTS.md) holds the standing rules for agents.** Agents read it at the start of every session. It points them at the three files above and sets how they write design findings. A rule we want every agent to follow goes here.
 
+**[REVIEWING.md](REVIEWING.md) is the checklist a reviewing agent follows.** It is not session context like the four files above: agents read it only when they review a PR, so it costs nothing the rest of the time.
+
 When a design call comes up, name the principle at stake ("this is a gulf of evaluation problem", "this fails Nielsen 1"). Using the course's terms is part of how the team learns them.
 
 ## How we work
@@ -51,6 +53,7 @@ When a design call comes up, name the principle at stake ("this is a gulf of eva
 - **Issues are the to-do list.** Every piece of work starts as a [GitHub issue](https://github.com/AlexHagemeister/FixFinder/issues) that says what should change and how we will know it works. Don't keep task lists in files.
 - **Milestones are phases.** Each [milestone](https://github.com/AlexHagemeister/FixFinder/milestones) names what the team is trying to find out and what ends the phase.
 - **Every change goes through a pull request.** Work on a branch, open a PR, and merge into `main` when it is ready. Nobody has to wait on anyone else to keep moving.
+- **Every PR gets offered a second look.** Before you merge, your agent offers a review by a fresh agent. To ask for one yourself, open a new agent session and paste: `Review PR <number> in this repo by following REVIEWING.md.`
 
 This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeister/gnadd](https://github.com/AlexHagemeister/gnadd).
 

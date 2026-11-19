@@ -6,6 +6,13 @@
 - Use the terms in [GLOSSARY.md](GLOSSARY.md) in conversation, issues, code, and on screen, and never the words it lists to avoid. When the team settles a new term, add it there in the same change.
 - Naming a new screen, flow, or UI element is part of building it: add the name under the glossary's Screens and flows heading in the same PR.
 
+## Reviewing pull requests
+
+- Whenever you are asked to review a PR, however the request is worded, follow [REVIEWING.md](REVIEWING.md).
+- Before a PR's merge is approved, offer the human a review by a fresh agent: "Want a fresh agent to review this PR before you decide?" If nobody is there to answer (an unattended run), run the review instead of offering it. Changes to docs or comments alone skip this. Config counts as code.
+- A fresh agent has none of the build conversation. Start it as a subagent if your tool has them. Otherwise, give the human this prompt to paste into a new session. Either way, the brief is exactly: `Review PR <number> in this repo by following REVIEWING.md.`
+- The reviewer reports to the human, who decides what to fix. Fix only what they pick. The human merges.
+
 <!-- gnadd:conventions -->
 ## GNADD
 
