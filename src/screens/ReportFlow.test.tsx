@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOTICES } from "../flow/notices.ts";
@@ -67,7 +67,12 @@ function photoFile() {
   return new File(["photo bytes"], "pothole.jpg", { type: "image/jpeg" });
 }
 
-function takePhoto() {
+// Takes a photo on the screen showing now. A screen that just appeared can still have an effect waiting to run, and
+// Home's effect ends any report in progress. Fired before it runs, the photo would start a report that the effect then
+// ends, which no person can do: picking a photo takes far longer than the effect. Awaiting an empty act() first lets
+// React run what it has queued, since act() yields one task behind it, so the photo arrives after Home has settled.
+async function takePhoto() {
+  await act(async () => {});
   const file = photoFile();
   const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
   expect(input).toHaveAttribute("accept", "image/*");
@@ -104,7 +109,7 @@ describe("Report flow", () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");
 
-    const file = takePhoto();
+    const file = await takePhoto();
 
     expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/working");
@@ -115,7 +120,8 @@ describe("Report flow", () => {
 
     // Location is asked for after the photo, on the location step.
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
-    expect(screen.getByText("Asking your phone where you are")).toBeInTheDocument();
+    // The ask goes out in the same moment the step changes, so the screen can show it a moment after the ask.
+    expect(await screen.findByText("Asking your phone where you are")).toBeInTheDocument();
     geo.allow();
 
     expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
@@ -135,7 +141,7 @@ describe("Report flow", () => {
   it("labels the result as placeholder output", async () => {
     const geo = stubGeolocation();
     await renderAt("/");
-    takePhoto();
+    await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
     geo.allow();
 
@@ -147,7 +153,7 @@ describe("Report flow", () => {
   it("opens the camera from Result's Retake photo, and a new photo starts a new report", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");
-    takePhoto();
+    await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
     geo.allow();
     await screen.findByRole("heading", { name: "Here is what FixFinder found" });
@@ -171,7 +177,7 @@ describe("Report flow", () => {
   it("returns to Home with a message when location times out", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");
-    takePhoto();
+    await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
 
     geo.fail(3); // TIMEOUT
@@ -183,7 +189,7 @@ describe("Report flow", () => {
 
   it("returns to Home with a message when the browser has no location support", async () => {
     await renderAt("/");
-    takePhoto();
+    await takePhoto();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(NOTICES.locationUnsupported);
     expect(lookup).not.toHaveBeenCalled();
@@ -192,12 +198,12 @@ describe("Report flow", () => {
   it("clears the message when the user takes another photo", async () => {
     const geo = stubGeolocation();
     await renderAt("/");
-    takePhoto();
+    await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
     geo.fail(3); // TIMEOUT. A denial no longer shows a message on Home.
     expect(await screen.findByRole("alert")).toBeInTheDocument();
 
-    takePhoto();
+    await takePhoto();
 
     expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -206,7 +212,7 @@ describe("Report flow", () => {
   it("stops the run when the user cancels, and never opens Result", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");
-    takePhoto();
+    await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -229,7 +235,7 @@ describe("Report flow", () => {
 describe("Location needed", () => {
   // Takes a photo and denies the first ask for location, answering after `ms`.
   async function takePhotoAndDeny(geo: ReturnType<typeof stubGeolocation>, ms: number) {
-    const file = takePhoto();
+    const file = await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
     answerAfter(ms);
     geo.fail(1); // PERMISSION_DENIED
