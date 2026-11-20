@@ -81,6 +81,8 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Turn on real AI calls only on purpose, and check in the team Discord first.
 
+Mistakes the app's AI step makes during development go in the [AI failure log](docs/ai-failure-log.md).
+
 ## Try it on your phone
 
 FixFinder is a web app that you save to your home screen, so it opens like any other app.
