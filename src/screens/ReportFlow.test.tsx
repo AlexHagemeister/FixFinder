@@ -224,6 +224,37 @@ describe("Report flow", () => {
     expect(lookup).not.toHaveBeenCalled();
   });
 
+  it("hides the tab bar from the photo through Result, and brings it back on Done", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+
+    await takePhoto();
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.allow();
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(await screen.findByRole("heading", { name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+  });
+
+  it("brings the tab bar back when the user cancels", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(await screen.findByRole("heading", { name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+  });
+
   it.each(["/working", "/location-needed", "/result"])("sends a direct visit to %s with no photo back to Home", async (path) => {
     const router = await renderAt(path);
 
@@ -364,6 +395,17 @@ describe("Location needed", () => {
 
     expect(query).toHaveBeenCalledWith({ name: "geolocation" });
     expect(screen.getByRole("list", { name: "Steps to turn location on" })).toHaveTextContent("Come back to FixFinder and tap Ask again.");
+  });
+
+  it("has no tab bar, and Not now brings it back on Home", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhotoAndDeny(geo, A_PERSON_ANSWERING_MS);
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
   });
 
   it("goes to Home and ends the report when the user taps Not now", async () => {
