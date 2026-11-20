@@ -1,15 +1,53 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
 import { routes } from "../routes.tsx";
 
+async function renderHome() {
+  const router = createMemoryRouter(routes, { initialEntries: ["/"] });
+  render(<RouterProvider router={router} />);
+  // App start first looks for a saved photo (none here: jsdom has no IndexedDB), so Home appears a moment later.
+  await screen.findByRole("heading", { level: 1, name: "See something broken?" });
+  return router;
+}
+
 describe("Home", () => {
   it('renders at "/" with its title and the Take a photo button', async () => {
-    const router = createMemoryRouter(routes, { initialEntries: ["/"] });
-    render(<RouterProvider router={router} />);
+    await renderHome();
 
-    // App start first looks for a saved photo (none here: jsdom has no IndexedDB), so Home appears a moment later.
-    expect(await screen.findByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Take a photo" })).toBeEnabled();
+  });
+
+  it("marks its sample sections as placeholders", async () => {
+    await renderHome();
+
+    expect(screen.getByRole("note", { name: "Placeholder" })).toHaveTextContent("still to be decided");
+    for (const name of ["Your latest report", "Problems near you", "Is this still there?"]) {
+      const section = screen.getByRole("region", { name });
+      expect(within(section).getByRole("heading", { level: 2, name })).toBeInTheDocument();
+      expect(within(section).getByText("Sample")).toBeInTheDocument();
+    }
+  });
+
+  it("opens My reports from See all your reports", async () => {
+    const router = await renderHome();
+
+    fireEvent.click(screen.getByRole("link", { name: "See all your reports" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "My reports" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/reports");
+  });
+
+  it("answers a tap on the sample Follow and Still there buttons", async () => {
+    await renderHome();
+
+    const follow = screen.getByRole("button", { name: "Follow Pothole" });
+    expect(follow).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(follow);
+    expect(screen.getByRole("button", { name: "Following Pothole" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Still there" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Thanks for checking. You said: still there. (Sample: nothing was saved.)");
+    expect(screen.queryByRole("button", { name: "It is gone" })).not.toBeInTheDocument();
   });
 });

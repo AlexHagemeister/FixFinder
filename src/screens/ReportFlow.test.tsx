@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOTICES } from "../flow/notices.ts";
@@ -187,6 +187,23 @@ describe("Report flow", () => {
     expect(lookup).not.toHaveBeenCalled();
   });
 
+  it("clears the message when the user leaves Home for another tab, so it does not come back", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.fail(3); // TIMEOUT
+    expect(await screen.findByRole("alert")).toHaveTextContent(NOTICES.locationFailed);
+
+    const tabBar = screen.getByRole("navigation", { name: "Main" });
+    fireEvent.click(within(tabBar).getByRole("link", { name: "My reports" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "My reports" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", { name: "Home" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("returns to Home with a message when the browser has no location support", async () => {
     await renderAt("/");
     await takePhoto();
@@ -222,6 +239,37 @@ describe("Report flow", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(router.state.location.pathname).toBe("/");
     expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("hides the tab bar from the photo through Result, and brings it back on Done", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+
+    await takePhoto();
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.allow();
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(await screen.findByRole("heading", { name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
+  });
+
+  it("brings the tab bar back when the user cancels", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(await screen.findByRole("heading", { name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
   });
 
   it.each(["/working", "/location-needed", "/result"])("sends a direct visit to %s with no photo back to Home", async (path) => {
@@ -364,6 +412,17 @@ describe("Location needed", () => {
 
     expect(query).toHaveBeenCalledWith({ name: "geolocation" });
     expect(screen.getByRole("list", { name: "Steps to turn location on" })).toHaveTextContent("Come back to FixFinder and tap Ask again.");
+  });
+
+  it("has no tab bar, and Not now brings it back on Home", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhotoAndDeny(geo, A_PERSON_ANSWERING_MS);
+    expect(screen.queryByRole("navigation", { name: "Main" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
   });
 
   it("goes to Home and ends the report when the user taps Not now", async () => {

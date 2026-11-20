@@ -57,7 +57,24 @@ _Avoid_: hearing back, follow-up, updates
 ## Screens and flows
 
 **Home**:
-The first screen, where the user starts a report by taking a photo.
+The first screen, where the user starts a report by taking a photo. It is the first tab in the tab bar.
+
+**Tab bar**:
+The bar at the bottom of the main screens (Home, My reports, and Settings), with one tab for each. It marks the current tab, and it hides during the report flow, so a tap on a tab cannot drop a report in progress.
+_Avoid_: nav bar, menu, bottom bar
+
+**My reports**:
+The tab and screen that will list the reports the user has sent, each with its report status. For now it is a placeholder screen with sample reports.
+
+**Settings**:
+FixFinder's own settings tab and screen. For now it is a placeholder screen with sample rows that do nothing. The phone's settings are always "the Settings app" or "your phone's settings", never just "Settings".
+_Avoid_: preferences, options
+
+**Placeholder screen**:
+A screen whose real content is not built yet. It shows sample content that gives a feel for what will go there, under a chip and note that say so. My reports and Settings are placeholder screens for now.
+
+**Placeholder section**:
+A section of a real screen that shows sample content, marked with a Sample chip under a Placeholder note. Home's placeholder sections (Your latest report, Problems near you, Is this still there?) come from the mockup, and the team will likely put something different there.
 
 **Working**:
 The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked.

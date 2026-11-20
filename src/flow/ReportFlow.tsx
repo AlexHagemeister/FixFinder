@@ -62,6 +62,13 @@ export function ReportFlow() {
     setState((current) => ({ ...EMPTY, notice: current.notice }));
   }, [pathname, restoring, releasePhoto]);
 
+  // Leaving Home for another tab clears a stopped run's notice. Home re-mounts on every tab switch, so a kept notice
+  // would come back on the return and be announced again as if something had just failed (Nielsen 1).
+  useEffect(() => {
+    if (pathname !== "/reports" && pathname !== "/settings") return;
+    setState((current) => (current.notice ? { ...current, notice: null } : current));
+  }, [pathname]);
+
   // Once app start reaches the screen it was heading for, it is done.
   useEffect(() => {
     if (restoreTarget && pathname === restoreTarget) setRestoreTarget(null);
