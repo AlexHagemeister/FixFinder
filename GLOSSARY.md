@@ -73,6 +73,9 @@ _Avoid_: preferences, options
 **Placeholder screen**:
 A screen whose real content is not built yet. It shows sample content that gives a feel for what will go there, under a chip and note that say so. My reports and Settings are placeholder screens for now.
 
+**Placeholder section**:
+A section of a real screen that shows sample content, marked with a Sample chip under a Placeholder note. Home's placeholder sections (Your latest report, Problems near you, Is this still there?) come from the mockup, and the team will likely put something different there.
+
 **Working**:
 The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked.
 
