@@ -12,6 +12,12 @@
 - When you see FixFinder's AI step give a wrong or bad answer while building or testing, add an entry to [docs/ai-failure-log.md](docs/ai-failure-log.md), following its instructions. Then note "Failure log: added entry N" in the related issue or PR.
 - Only mistakes by the app's own AI step go in the log. Your own mistakes as a coding agent do not, and neither does the stand-in's sample output.
 
+## Claiming issues
+
+- Before starting work on an issue, assign it to the person you're working for: `gh issue edit <N> --add-assignee @me`. That's the team's claim.
+- If the issue is already assigned to someone else, stop and tell your user. Don't start it unless they've cleared it with that person.
+- Whenever you list open issues (including the snapshot from `/prime-gnadd`), mark each one as open or assigned, with the assignee's name. Fetch them with `gh issue list --state open --json number,title,assignees`, since prime's own listing leaves assignees out.
+
 ## Reviewing pull requests
 
 - Whenever you are asked to review a PR, however the request is worded, follow [REVIEWING.md](REVIEWING.md).
