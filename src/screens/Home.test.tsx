@@ -47,7 +47,7 @@ describe("Home", () => {
     expect(screen.getByRole("button", { name: "Following Pothole" })).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "Still there" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Thanks for checking. You said: still there.");
+    expect(screen.getByRole("status")).toHaveTextContent("Thanks for checking. You said: still there. (Sample: nothing was saved.)");
     expect(screen.queryByRole("button", { name: "It is gone" })).not.toBeInTheDocument();
   });
 });

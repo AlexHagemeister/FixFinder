@@ -84,7 +84,7 @@ function PlaceholderSections() {
           </div>
           {stillAnswer ? (
             <span className="thanks" role="status">
-              Thanks for checking. You said: {stillAnswer}.
+              Thanks for checking. You said: {stillAnswer}. (Sample: nothing was saved.)
             </span>
           ) : (
             <div className="btn-row">

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOTICES } from "../flow/notices.ts";
@@ -185,6 +185,23 @@ describe("Report flow", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(NOTICES.locationFailed);
     expect(router.state.location.pathname).toBe("/");
     expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("clears the message when the user leaves Home for another tab, so it does not come back", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.fail(3); // TIMEOUT
+    expect(await screen.findByRole("alert")).toHaveTextContent(NOTICES.locationFailed);
+
+    const tabBar = screen.getByRole("navigation", { name: "Main" });
+    fireEvent.click(within(tabBar).getByRole("link", { name: "My reports" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "My reports" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Main" })).getByRole("link", { name: "Home" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("returns to Home with a message when the browser has no location support", async () => {

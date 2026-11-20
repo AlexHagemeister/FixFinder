@@ -232,6 +232,8 @@ button { font: inherit; color: inherit; }
 .link-btn { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; color: var(--link); font-size: 15px; font-weight: 600; text-decoration: none; }
 .link-btn:active { text-decoration: underline; }
 .near-card { display: flex; align-items: center; gap: 12px; }
+/* Wide enough for "Following", so a tap on Follow does not widen the button and shift the card. */
+.near-card .btn.small { min-width: 116px; }
 .btn.small { min-height: 44px; width: auto; padding: 0 16px; border-radius: 12px; font-size: 15px; background: var(--line-soft); color: var(--fg); }
 .btn.small.on { background: var(--ok-soft); color: var(--ok-text); }
 .btn-row { display: flex; gap: 8px; }
