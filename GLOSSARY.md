@@ -14,9 +14,9 @@ _Avoid_: issue (that means a GitHub issue), hazard, incident
 The picture the user takes of a problem. It is the starting point of every report.
 _Avoid_: image, picture, snapshot
 
-**Category**:
-The kind of problem FixFinder thinks it is looking at, like "pothole" or "broken streetlight."
-_Avoid_: type, label, classification
+**Description**:
+A short phrase saying what the problem is, like "Pothole" or "Window smashed on bus stop." FixFinder suggests it from the photo, and the user can edit it. FixFinder uses it, with the photo and the location, to find the responsible party.
+_Avoid_: category, classification, label, type
 
 **Location**:
 Where the problem is, said the way a person would describe it (a street address, an intersection, a landmark).
@@ -25,6 +25,10 @@ _Avoid_: place, spot, coordinates, GPS
 **Report**:
 The message about one problem that goes to the responsible party. FixFinder drafts it, the user checks it, and only the user submits it.
 _Avoid_: ticket, complaint, request, submission
+
+**Report text**:
+The body of the report, saying what the problem is and where. FixFinder drafts it, and the user can edit it before submitting.
+_Avoid_: description, message, body
 
 ## Who fixes it
 
@@ -83,7 +87,7 @@ The screen FixFinder shows after the photo is taken, listing each step it takes 
 The screen FixFinder shows when the user denies location. It says FixFinder needs the location to find who is responsible and stops there, and offers Ask again, which carries on with the same photo. When the phone will likely not ask again, it lists the steps for turning location back on in the phone's settings.
 
 **Result**:
-The screen that shows what FixFinder found: the user's photo, the category with a short description, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
+The screen that shows what FixFinder found: the user's photo, the description, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
 
 **Placeholder result**:
 The chip and note on Result that say its content is sample output, shown while FixFinder does not read photos yet.
