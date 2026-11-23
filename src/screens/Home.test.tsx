@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { routes } from "../routes.tsx";
 
 async function renderHome() {
@@ -17,6 +17,36 @@ describe("Home", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Take a photo" })).toBeEnabled();
+  });
+
+  it("offers Choose from your photos below Take a photo, as the quieter button", async () => {
+    await renderHome();
+
+    const take = screen.getByRole("button", { name: "Take a photo" });
+    const choose = screen.getByRole("button", { name: "Choose from your photos" });
+    expect(take).toHaveClass("btn", "primary");
+    expect(choose).toHaveClass("btn", "text");
+    expect(choose).not.toHaveClass("primary");
+    expect(take.compareDocumentPosition(choose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("opens the camera from Take a photo and the photo picker from Choose from your photos", async () => {
+    await renderHome();
+    const clicked: HTMLInputElement[] = [];
+    const click = vi.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function (this: HTMLInputElement) {
+      clicked.push(this);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Take a photo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose from your photos" }));
+    click.mockRestore();
+
+    expect(clicked).toHaveLength(2);
+    const [camera, library] = clicked;
+    expect(camera).toHaveAttribute("accept", "image/*");
+    expect(camera).toHaveAttribute("capture", "environment");
+    expect(library).toHaveAttribute("accept", "image/*");
+    expect(library).not.toHaveAttribute("capture");
   });
 
   it("marks its sample sections as placeholders", async () => {

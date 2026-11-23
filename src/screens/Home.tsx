@@ -102,10 +102,11 @@ function PlaceholderSections() {
   );
 }
 
-// Home: the first screen, where the user starts a report by taking a photo.
+// Home: the first screen, where the user starts a report by taking a photo or choosing one already on their phone.
 export function Home() {
   const { startReport, notice } = useReportFlow();
   const photoInput = useRef<HTMLInputElement>(null);
+  const libraryInput = useRef<HTMLInputElement>(null);
 
   return (
     <main className="screen">
@@ -134,6 +135,11 @@ export function Home() {
           Take a photo
         </button>
         <PhotoInput ref={photoInput} onPick={startReport} />
+        {/* The quieter way in: a photo already on the phone goes through the same report flow as a taken one. */}
+        <button type="button" className="btn text" onClick={() => libraryInput.current?.click()}>
+          Choose from your photos
+        </button>
+        <PhotoInput ref={libraryInput} onPick={startReport} source="library" />
       </div>
     </main>
   );

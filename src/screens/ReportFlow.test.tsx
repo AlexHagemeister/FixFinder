@@ -81,6 +81,17 @@ async function takePhoto() {
   return file;
 }
 
+// Picks a photo already on the phone through Home's Choose from your photos, settling React first as takePhoto does.
+// `files` empty stands for backing out of the photo picker without choosing.
+async function choosePhoto(files: File[] = [photoFile()]) {
+  await act(async () => {});
+  const input = document.querySelector<HTMLInputElement>('input[type="file"][data-source="library"]')!;
+  expect(input).toHaveAttribute("accept", "image/*");
+  expect(input).not.toHaveAttribute("capture");
+  fireEvent.change(input, { target: { files } });
+  return files[0];
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   // jsdom has no object URLs.
@@ -136,6 +147,48 @@ describe("Report flow", () => {
       "href",
       "https://berkeleyca.gov/street-repair",
     );
+  });
+
+  it("takes a photo chosen from the phone through Working to Result, the same as a taken one", async () => {
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+
+    const file = await choosePhoto();
+
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    geo.allow();
+
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/result");
+    expect(lookup).toHaveBeenCalledWith({ photo: file, ...BERKELEY });
+    expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
+  });
+
+  it("opens Location needed for a chosen photo when the user denies location", async () => {
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+
+    await choosePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    answerAfter(A_PERSON_ANSWERING_MS);
+    geo.fail(1);
+
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/location-needed"));
+    expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("stays on Home with nothing changed when the user backs out of the photo picker", async () => {
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+
+    await choosePhoto([]);
+    await act(async () => {});
+
+    expect(router.state.location.pathname).toBe("/");
+    expect(screen.getByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
+    expect(geo.getCurrentPosition).not.toHaveBeenCalled();
+    expect(lookup).not.toHaveBeenCalled();
   });
 
   it("labels the result as placeholder output", async () => {
