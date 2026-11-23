@@ -11,7 +11,7 @@ Something broken or wrong that a user wants fixed, like a pothole or a smashed b
 _Avoid_: issue (that means a GitHub issue), hazard, incident
 
 **Photo**:
-The picture the user takes of a problem. It is the starting point of every report.
+The picture of a problem that the user takes, or chooses from the photos already on their phone. It is the starting point of every report.
 _Avoid_: image, picture, snapshot
 
 **Description**:
@@ -61,7 +61,10 @@ _Avoid_: hearing back, follow-up, updates
 ## Screens and flows
 
 **Home**:
-The first screen, where the user starts a report by taking a photo. It is the first tab in the tab bar.
+The first screen, where the user starts a report by taking a photo or choosing one already on their phone. It is the first tab in the tab bar.
+
+**Choose from your photos**:
+Home's quieter button, under Take a photo. It opens the phone's photo picker, and the chosen photo goes through the same report flow as a taken one. The location is still where the phone is now, not where the photo was taken.
 
 **Tab bar**:
 The bar at the bottom of the main screens (Home, My reports, and Settings), with one tab for each. It marks the current tab, and it hides during the report flow, so a tap on a tab cannot drop a report in progress.
