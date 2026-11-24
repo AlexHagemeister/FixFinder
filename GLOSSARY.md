@@ -95,6 +95,9 @@ The screen that shows what FixFinder found: the user's photo, the description, t
 **Placeholder result**:
 The chip and note on Result that say its content is sample output, shown while FixFinder does not read photos yet.
 
+**Change location**:
+The location picker in the prototype. The user moves the map beneath a centered pin and taps Use this location to keep the selected location. Cancel keeps the previous location.
+
 **Notice**:
 A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, or Location needed's line when location is still off after Ask again.
 

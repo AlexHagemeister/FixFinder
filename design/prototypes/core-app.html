@@ -6,6 +6,7 @@
 <title>FixFinder Prototype</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
 /* Layout: one phone-width column. Each screen scrolls its content above a pinned action bar, so the main action is always in thumb reach. */
 :root{
@@ -118,6 +119,11 @@ button{font:inherit; color:inherit}
 .sheet{position:relative; background:var(--surface); border-radius:22px 22px 0 0; display:flex; flex-direction:column; gap:12px;
   padding-block:12px calc(24px + env(safe-area-inset-bottom, 0px)); padding-left:max(20px, env(safe-area-inset-left, 0px)); padding-right:max(20px, env(safe-area-inset-right, 0px))}
 .grabber{align-self:center; width:40px; height:5px; border-radius:3px; background:var(--line)}
+.location-map-wrap{position:relative; isolation:isolate; overflow:hidden; border-radius:14px}
+#location-map{height:clamp(150px, 36dvh, 320px); background:var(--bg)}
+.location-pin{position:absolute; left:50%; top:50%; transform:translate(-50%,-100%); z-index:1000; pointer-events:none; color:var(--accent); filter:drop-shadow(0 0 2px white)}
+.location-pin svg{display:block; width:32px; height:32px}
+.location-sheet{max-height:100%; overflow:auto}
 .opt{display:flex; align-items:center; gap:12px; width:100%; min-height:58px; padding:10px 14px; border-radius:14px; border:1px solid var(--line); background:var(--surface); text-align:left; cursor:pointer}
 .opt.on{border:2px solid var(--accent); background:var(--accent-soft)}
 .opt .grow{flex:1}
@@ -167,6 +173,7 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
 <div class="app" id="app" aria-live="polite"></div>
 <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 (function(){
   var ICON = {
@@ -208,14 +215,11 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
     { label:'Damaged sidewalk', hint:'Also possible', phrase:'a damaged section of sidewalk' },
     { label:'Debris in the road', hint:'Also possible', phrase:'debris in the road' }
   ];
-  var LOCS = [
-    { label:'Shattuck Ave & Cedar St', hint:'Closest to you, but not certain' },
-    { label:'Shattuck Ave & Vine St', hint:'Nearby' }
-  ];
+  var FOUND_LOCATION = { label:'Near Shattuck Ave & Cedar St, Berkeley', latitude:37.8795, longitude:-122.2689 };
   var PARTY = 'Berkeley Public Works';
 
   var S = {
-    screen:'start', photo:null, cat:0, loc:0, sheet:null, zoom:false, step:0,
+    screen:'start', photo:null, cat:0, location:FOUND_LOCATION, sheet:null, zoom:false, step:0,
     desc:'', descEdited:false,
     returning:true, followed:{}, stillAnswer:null,
     reports:[
@@ -235,14 +239,16 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
     Resolved:PARTY + ' marked it fixed.'
   };
   var timer = null;
+  var locationMap = null;
+  var draftLocation = null;
   var app = document.getElementById('app');
   var input = document.getElementById('photo-input');
 
   function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function photoSrc(){ return S.photo || SAMPLE; }
-  function defaultDesc(){ return 'There is ' + CATS[S.cat].phrase + ' at ' + LOCS[S.loc].label + ', Berkeley. Photo attached.'; }
+  function defaultDesc(){ return 'There is ' + CATS[S.cat].phrase + ' at ' + S.location.label + '. Photo attached.'; }
   function stopTimer(){ if (timer){ clearInterval(timer); clearTimeout(timer); timer = null; } }
-  function reset(){ stopTimer(); S.photo = null; S.cat = 0; S.loc = 0; S.sheet = null; S.zoom = false; S.step = 0; S.desc = ''; S.descEdited = false; }
+  function reset(){ stopTimer(); S.photo = null; S.cat = 0; S.location = FOUND_LOCATION; S.sheet = null; S.zoom = false; S.step = 0; S.desc = ''; S.descEdited = false; }
   function go(screen){ S.screen = screen; render(); var sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = 0; }
   function screen(body, actions, scrollStyle){
     return '<section class="screen"><div class="scroll"' + (scrollStyle ? ' style="' + scrollStyle + '"' : '') + '>' + body + '</div>' +
@@ -363,7 +369,7 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
     working: function(){
       var defs = [
         ['Reading the photo', 'Working out what the problem is', 'Looks like ' + CATS[S.cat].phrase],
-        ['Pinning down the location', 'Turning your location into an address', LOCS[S.loc].label + ', Berkeley'],
+        ['Pinning down the location', 'Turning your location into an address', FOUND_LOCATION.label],
         ['Finding who is responsible', 'Checking who maintains this location', PARTY],
         ['Drafting the report', 'Writing it up for you to check', 'Draft ready']
       ];
@@ -387,18 +393,26 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
 
     review: function(){
       var overlay = '';
-      if (S.sheet){
-        var isLoc = S.sheet === 'loc';
-        var list = isLoc ? LOCS : CATS, picked = isLoc ? S.loc : S.cat;
-        var opts = list.map(function(o, i){
-          return '<button type="button" class="opt' + (i === picked ? ' on' : '') + '" data-act="pick" data-i="' + i + '">' +
+      if (S.sheet === 'loc'){
+        overlay = '<div class="layer"><button type="button" class="scrim" tabindex="-1" aria-label="Close" data-act="close"></button>' +
+          '<div class="sheet location-sheet" role="dialog" aria-modal="true" aria-labelledby="location-title"><div class="grabber"></div>' +
+          '<h2 class="h-m" id="location-title" tabindex="-1">Change location</h2>' +
+          '<p class="small" id="location-help">Move the map until the pin points to the problem. You can also use the arrow keys.</p>' +
+          '<div class="location-map-wrap"><div id="location-map" role="region" aria-label="Location map" aria-describedby="location-help"></div>' +
+          '<span class="location-pin" aria-hidden="true">' + ICON.pin + '</span></div>' +
+          '<p class="small" id="location-preview" role="status">' + esc(S.location.label) + '</p>' +
+          '<button type="button" class="btn primary" data-act="confirm-location" disabled>Use this location</button>' +
+          '<button type="button" class="btn" data-act="close">Cancel</button></div></div>';
+      } else if (S.sheet){
+        var opts = CATS.map(function(o, i){
+          return '<button type="button" class="opt' + (i === S.cat ? ' on' : '') + '" data-act="pick" data-i="' + i + '">' +
             '<span class="grow stack" style="gap:2px"><span style="font-size:16px;font-weight:600">' + esc(o.label) + '</span><span class="label">' + o.hint + '</span></span>' +
-            (i === picked ? ICON.checkAccent : '') + '</button>';
+            (i === S.cat ? ICON.checkAccent : '') + '</button>';
         }).join('');
         overlay = '<div class="layer"><button type="button" class="scrim" aria-label="Close" data-act="close"></button>' +
-          '<div class="sheet" role="dialog" aria-label="' + (isLoc ? 'Change the location' : 'Change the category') + '"><div class="grabber"></div>' +
-          '<h2 class="h-m">' + (isLoc ? 'Where is the problem?' : 'What is the problem?') + '</h2>' +
-          '<p class="small">' + (isLoc ? 'Pick the closest match. FixFinder uses it to find who is responsible.' : 'FixFinder ranked these from your photo.') + '</p>' +
+          '<div class="sheet" role="dialog" aria-label="Change the category"><div class="grabber"></div>' +
+          '<h2 class="h-m">What is the problem?</h2>' +
+          '<p class="small">FixFinder ranked these from your photo.</p>' +
           '<div class="stack" style="gap:10px">' + opts + '</div></div></div>';
       } else if (S.zoom){
         overlay = '<div class="layer middle"><button type="button" class="scrim" aria-label="Close" data-act="close"></button>' +
@@ -407,7 +421,7 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
           '<button type="button" class="btn" data-act="close">Close</button></div></div>';
       }
       var catChip = S.cat === 0 ? chip('sure', 'Best match') : chip('mine', 'Your pick');
-      var locChip = S.loc === 0 ? chip('unsure', 'Unsure') : chip('mine', 'Your pick');
+      var locChip = S.location === FOUND_LOCATION ? chip('unsure', 'Unsure') : chip('mine', 'Your pick');
       return screen(
         '<div class="top"><button type="button" class="back" data-act="retake">' + ICON.back + 'Retake photo</button></div>' +
         '<div class="review-head">' +
@@ -417,9 +431,9 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
         '<p class="small">Tap the category or location to change it.</p>' +
         '<div class="card rows">' +
           '<button type="button" class="row" data-act="sheet" data-sheet="cat">' + ICON.tag + '<span class="grow stack" style="gap:3px"><span class="label-row"><span class="label">Category</span>' + catChip + '</span><span class="value">' + esc(CATS[S.cat].label) + '</span></span><span class="change">Change</span></button>' +
-          '<button type="button" class="row" data-act="sheet" data-sheet="loc">' + ICON.pin + '<span class="grow stack" style="gap:3px"><span class="label-row"><span class="label">Location</span>' + locChip + '</span><span class="value">' + esc(LOCS[S.loc].label) + '</span></span><span class="change">Change</span></button>' +
+          '<button type="button" class="row" data-act="sheet" data-sheet="loc">' + ICON.pin + '<span class="grow stack" style="gap:3px"><span class="label-row"><span class="label">Location</span>' + locChip + '</span><span class="value">' + esc(S.location.label) + '</span></span><span class="change">Change</span></button>' +
           '<div class="party">' + ICON.building + '<div class="stack" style="flex:1;min-width:0"><span class="label">Responsible party</span><span style="font-size:17px;font-weight:600">' + PARTY + '</span>' +
-            '<span class="small">Picked from the category and location. [Reason from the source]</span>' +
+            '<span class="small">' + (S.location === FOUND_LOCATION ? 'Picked using the location FixFinder found.' : 'FixFinder used its original location for this lookup.') + '</span>' +
             '<a class="source" href="#source" data-act="noop">Source: City of Berkeley, [streets page] ' + ICON.ext + '</a></div></div>' +
         '</div>',
         '<button type="button" class="btn primary" data-act="to-draft">Looks right, draft the report</button>'
@@ -436,7 +450,7 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
           '<a class="source" href="#source" data-act="noop">Source: City of Berkeley, [streets page]</a></div>' +
         '<div class="card pad stack" style="gap:12px">' +
           '<div style="display:flex;gap:12px;align-items:center"><img class="thumb" src="' + photoSrc() + '" alt="Your photo">' +
-            '<div class="stack" style="gap:2px"><strong>' + esc(CATS[S.cat].label) + '</strong><span class="small">' + esc(LOCS[S.loc].label) + ', Berkeley</span><span class="label">Photo attached</span></div></div>' +
+            '<div class="stack" style="gap:2px"><strong>' + esc(CATS[S.cat].label) + '</strong><span class="small">' + esc(S.location.label) + '</span><span class="label">Photo attached</span></div></div>' +
           '<div class="stack" style="gap:8px"><label for="desc" class="label">Description, drafted by FixFinder. Edit anything.</label>' +
           '<textarea id="desc" data-input="desc">' + esc(S.desc) + '</textarea></div>' +
         '</div>',
@@ -464,7 +478,7 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
           '<div class="row-between"><span class="label">Case number</span><strong>[case number]</strong></div>' +
           '<div class="stack" style="gap:10px"><span class="label">Report status</span>' +
             '<div class="status-track"><div class="now"><div class="bar on"></div><span>Submitted</span></div><div><div class="bar"></div><span>Received</span></div><div><div class="bar"></div><span>Resolved</span></div></div></div>' +
-          '<div class="stack" style="gap:2px;border-top:1px solid var(--line-soft);padding-top:12px"><strong>' + esc(CATS[S.cat].label) + '</strong><span class="small">' + esc(LOCS[S.loc].label) + ', Berkeley</span></div>' +
+          '<div class="stack" style="gap:2px;border-top:1px solid var(--line-soft);padding-top:12px"><strong>' + esc(CATS[S.cat].label) + '</strong><span class="small">' + esc(S.location.label) + '</span></div>' +
         '</div>',
         '<button type="button" class="btn primary" data-act="done">Done</button>' +
         '<button type="button" class="btn text" data-act="another">Report another problem</button>'
@@ -488,13 +502,66 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
   function isTab(s){ return TABS.some(function(t){ return t.screen === s; }); }
   var lastScreen = null;
   function render(){
+    var locationWasOpen = locationMap || app.querySelector('.location-sheet');
+    if (locationMap) locationMap.remove();
+    locationMap = null;
+    draftLocation = null;
     var old = app.querySelector('.scroll'), keep = (old && lastScreen === S.screen) ? old.scrollTop : 0;
     app.innerHTML = views[S.screen]() + (isTab(S.screen) ? tabbar() : '');
     lastScreen = S.screen;
     var sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = keep;
+    if (S.sheet === 'loc') openLocationMap();
+    else if (locationWasOpen) app.querySelector('[data-sheet="loc"]')?.focus();
   }
 
-  function saveLast(){ S.reports.unshift({ cat:CATS[S.cat].label, loc:LOCS[S.loc].label, status:'Submitted', when:'Today' }); }
+  function openLocationMap(){
+    app.querySelector('.screen').inert = true;
+    app.querySelector('#location-title').focus();
+    var preview = app.querySelector('#location-preview');
+    var confirm = app.querySelector('[data-act="confirm-location"]');
+    if (window.location.protocol === 'file:'){
+      preview.textContent = 'Open this prototype through a local web server to load the map.';
+      return;
+    }
+    if (!window.L){
+      preview.textContent = 'The map could not load. Cancel to keep the current location.';
+      return;
+    }
+    locationMap = L.map('location-map', { scrollWheelZoom:false }).setView(
+      [S.location.latitude, S.location.longitude], 17
+    );
+    var tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom:19,
+      referrerPolicy:'strict-origin-when-cross-origin',
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    var mapVisible = false;
+    function updateLocationPreview(){
+      confirm.disabled = !mapVisible || !draftLocation;
+      preview.textContent = !mapVisible ? 'Loading the map…' :
+        draftLocation ? 'Pin moved. Use this location to confirm.' : S.location.label;
+    }
+    tiles.on('tileload', function(){
+      if (mapVisible) return;
+      mapVisible = true;
+      updateLocationPreview();
+    });
+    tiles.on('load', function(){
+      if (!mapVisible) preview.textContent = 'The map tiles are unavailable. Cancel to keep the current location.';
+    });
+    updateLocationPreview();
+    tiles.addTo(locationMap);
+    locationMap.on('movestart', function(){ confirm.disabled = true; });
+    locationMap.on('moveend', function(){
+      var center = locationMap.getCenter().wrap();
+      var original = L.latLng(S.location.latitude, S.location.longitude);
+      var moved = center.distanceTo(original) >= 1;
+      draftLocation = moved ? { label:'Location selected on the map', latitude:center.lat, longitude:center.lng } : null;
+      updateLocationPreview();
+    });
+  }
+
+  function saveLast(){ S.reports.unshift({ cat:CATS[S.cat].label, loc:S.location.label, status:'Submitted', when:'Today' }); }
 
   app.addEventListener('click', function(e){
     var el = e.target.closest('[data-act]');
@@ -512,9 +579,14 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
       case 'zoom': S.zoom = true; render(); break;
       case 'close': S.sheet = null; S.zoom = false; render(); break;
       case 'pick':
-        var i = Number(el.getAttribute('data-i'));
-        if (S.sheet === 'loc') S.loc = i; else S.cat = i;
+        S.cat = Number(el.getAttribute('data-i'));
         S.sheet = null; render(); break;
+      case 'confirm-location':
+        if (!draftLocation || el.disabled) break;
+        S.location = draftLocation;
+        S.sheet = null;
+        render();
+        break;
       case 'to-draft': go('draft'); break;
       case 'to-review': go('review'); break;
       case 'submit':
@@ -523,6 +595,13 @@ textarea{width:100%; min-height:120px; resize:vertical; padding:12px; border-rad
         break;
       case 'done': case 'another': saveLast(); reset(); go('start'); break;
       case 'noop': e.preventDefault(); break;
+    }
+  });
+
+  app.addEventListener('keydown', function(e){
+    if (S.sheet === 'loc' && e.key === 'Escape'){
+      S.sheet = null;
+      render();
     }
   });
 
