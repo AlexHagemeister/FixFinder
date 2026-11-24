@@ -38,7 +38,7 @@ export function Result() {
           <div className="card pad stack placeholder-note" role="note" aria-label="Placeholder result">
             <span className="chip">Placeholder result</span>
             <span className="small">
-              FixFinder does not read photos yet. This is sample output, the same for every photo and location.
+              FixFinder does not read photos yet. Everything here except the location is sample output, the same for every photo.
             </span>
           </div>
         )}

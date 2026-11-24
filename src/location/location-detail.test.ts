@@ -3,12 +3,13 @@ import {
   describeLocation,
   findLocation,
   IN_FRONT_OF_METERS,
+  LANDMARK_ACCURACY_METERS,
   ROUGH_ACCURACY_METERS,
   type Reading,
 } from "./location-detail.ts";
 import { clearGeocodeCache, type ReverseGeocode } from "./nominatim.ts";
 
-// Answers shaped like Nominatim's, from real lookups on 2026-11-24 at public spots. Each sits at the matched thing's
+// Answers shaped like Nominatim's, from real lookups on 2026-11-24 at public places in Berkeley and San Francisco. Each sits at the matched thing's
 // own position, so a reading taken right there is inside it.
 const BART_STATION: ReverseGeocode = {
   name: "Downtown Berkeley",
@@ -74,6 +75,15 @@ const SAN_FRANCISCO: ReverseGeocode = {
   latitude: 37.7955,
   longitude: -122.3937,
 };
+// A named thing with no street and no neighbourhood, shaped like Nominatim's answer in a large park.
+const LANDMARK_ONLY: ReverseGeocode = {
+  name: "Tilden Regional Park",
+  category: "leisure",
+  type: "park",
+  address: { leisure: "Tilden Regional Park", city: "Berkeley" },
+  latitude: 37.8936,
+  longitude: -122.2445,
+};
 const AREA_ONLY: ReverseGeocode = {
   name: "Downtown Berkeley",
   category: "place",
@@ -130,6 +140,23 @@ describe("describeLocation", () => {
     );
   });
 
+  it("says In front of only when the gap is bigger than the reading could be off", () => {
+    const accuracy = 40;
+    expect(describeLocation(OFFICE, at(OFFICE, accuracy, accuracy - 5))).toBe("3017 Telegraph Avenue, Berkeley");
+    expect(describeLocation(OFFICE, at(OFFICE, accuracy, accuracy + 5))).toBe(
+      "In front of 3017 Telegraph Avenue, Berkeley",
+    );
+  });
+
+  it("names a landmark only when the reading is accurate enough to put the phone at it", () => {
+    expect(describeLocation(BART_STATION, at(BART_STATION, LANDMARK_ACCURACY_METERS))).toBe(
+      "Downtown Berkeley station, 2160 Shattuck Avenue, Berkeley",
+    );
+    expect(describeLocation(BART_STATION, at(BART_STATION, LANDMARK_ACCURACY_METERS + 1))).toBe(
+      "2160 Shattuck Avenue, Berkeley",
+    );
+  });
+
   it("does not count a road's own name as a landmark", () => {
     expect(describeLocation(PEDESTRIAN_ROAD, at(PEDESTRIAN_ROAD))).toBe("Sather Road, Berkeley");
   });
@@ -153,6 +180,17 @@ describe("describeLocation", () => {
 
   it("falls back to Near the neighbourhood when there is no street", () => {
     expect(describeLocation(AREA_ONLY, at(AREA_ONLY))).toBe("Near Downtown Berkeley, Berkeley");
+  });
+
+  it("names a landmark alone when there is no street", () => {
+    expect(describeLocation(LANDMARK_ONLY, at(LANDMARK_ONLY))).toBe("Tilden Regional Park, Berkeley");
+  });
+
+  it("says Near a landmark when the reading is too rough and there is no street or neighbourhood", () => {
+    expect(describeLocation(LANDMARK_ONLY, at(LANDMARK_ONLY, ROUGH))).toBe("Near Tilden Regional Park, Berkeley");
+    expect(describeLocation(LANDMARK_ONLY, at(LANDMARK_ONLY, LANDMARK_ACCURACY_METERS + 1))).toBe(
+      "Near Tilden Regional Park, Berkeley",
+    );
   });
 
   it("gives nothing when there is nothing a person would recognize", () => {
@@ -206,7 +244,7 @@ describe("findLocation", () => {
     expect(found.detail.landmarks).toEqual([]);
   });
 
-  it("asks Nominatim for the spot rounded to about 11 m, and reuses the answer for the same spot", async () => {
+  it("asks Nominatim for the position rounded to about 11 m, and reuses the answer for the same position", async () => {
     const fetchMock = answerWith(OFFICE);
     await findLocation(position);
     await findLocation({ ...position, latitude: 37.87014 });
@@ -217,21 +255,21 @@ describe("findLocation", () => {
     expect(url.searchParams.get("lon")).toBe("-122.2681");
   });
 
-  it("keeps the exact spot when Nominatim cannot be reached", async () => {
+  it("keeps the exact position when Nominatim cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const found = await findLocation(position);
     expect(found.location).toBeNull();
     expect(found.detail).toEqual({ ...position, address: null, landmarks: [] });
   });
 
-  it("keeps the exact spot when Nominatim has nothing there", async () => {
+  it("keeps the exact position when Nominatim has nothing there", async () => {
     answerWith({ error: "Unable to geocode" });
     const found = await findLocation(position);
     expect(found.location).toBeNull();
     expect(found.detail.address).toBeNull();
   });
 
-  it("keeps the exact spot when Nominatim answers with an error status", async () => {
+  it("keeps the exact position when Nominatim answers with an error status", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("busy", { status: 503 })));
     const found = await findLocation(position);
     expect(found.location).toBeNull();

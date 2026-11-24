@@ -106,7 +106,7 @@ export function ReportFlow() {
         }
 
         // Step 2: pinning down the location. A failure also waits out the step's pause, so after Ask again the
-        // Working screen shows "Asking your phone where you are" before a second denial leads back.
+        // Working screen shows "Getting your location" before a second denial leads back.
         const askedAt = Date.now();
         const [outcome] = await Promise.all([
           getPosition().then(
@@ -133,7 +133,7 @@ export function ReportFlow() {
           return;
         }
         const { position } = outcome;
-        // Puts the position into words. This never fails: without a name, the report carries on with the exact spot.
+        // Puts the position into words. This never fails: without a name, the report carries on with the exact position.
         const found = await findLocation(position);
         if (!isLatest()) return;
         // The denial is behind us now. Clearing it here, not in Ask again, keeps Location needed from sending the

@@ -32,7 +32,7 @@ const SAMPLE: LookupResponse = {
 
 const BERKELEY = { latitude: 37.8716, longitude: -122.2727 };
 
-// What Nominatim says about the spot: a street address in Berkeley.
+// What Nominatim says about the position: a street address in Berkeley.
 const SHATTUCK: ReverseGeocode = {
   name: "",
   category: "building",
@@ -147,7 +147,7 @@ describe("Report flow", () => {
     // Location is asked for after the photo, on the location step.
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
     // The ask goes out in the same moment the step changes, so the screen can show it a moment after the ask.
-    expect(await screen.findByText("Asking your phone where you are")).toBeInTheDocument();
+    expect(await screen.findByText("Getting your location")).toBeInTheDocument();
     geo.allow();
 
     expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
@@ -244,7 +244,7 @@ describe("Report flow", () => {
     });
   });
 
-  it("carries on when it cannot put the location into words, and the lookup still gets the exact spot", async () => {
+  it("carries on when it cannot put the location into words, and the lookup still gets the exact position", async () => {
     vi.mocked(reverseGeocode).mockRejectedValue(new TypeError("Failed to fetch"));
     const geo = stubGeolocation();
     await renderAt("/");
@@ -477,7 +477,7 @@ describe("Location needed", () => {
     expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/working");
     expect(screen.getByText("Photo ready")).toBeInTheDocument();
-    expect(screen.getByText("Asking your phone where you are")).toBeInTheDocument();
+    expect(screen.getByText("Getting your location")).toBeInTheDocument();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2));
     expect(reloadPage).not.toHaveBeenCalled();
     answerAfter(A_PERSON_ANSWERING_MS);
@@ -595,7 +595,7 @@ describe("App start with a saved photo", () => {
       expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
       expect(router.state.location.pathname).toBe("/working");
       expect(screen.getByText("Photo ready")).toBeInTheDocument();
-      expect(screen.getByText("Asking your phone where you are")).toBeInTheDocument();
+      expect(screen.getByText("Getting your location")).toBeInTheDocument();
       // The resume is used up, so another reload before the step ends opens Location needed instead.
       expect(savePhoto).toHaveBeenCalledWith(record.photo, { phoneWillNotAsk: true, resumeAtLocation: false });
 

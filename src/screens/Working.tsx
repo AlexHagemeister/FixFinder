@@ -7,7 +7,7 @@ import { CheckIcon } from "../icons.tsx";
 
 const STEP_COPY: Record<StepId, { title: string; current: string; done: string }> = {
   photo: { title: "Reading the photo", current: "Getting your photo ready", done: "Photo ready" },
-  location: { title: "Pinning down the location", current: "Asking your phone where you are", done: "Location found" },
+  location: { title: "Pinning down the location", current: "Getting your location", done: "Location found" },
   responsibleParty: { title: "Finding who is responsible", current: "Checking who maintains this location", done: "" },
 };
 

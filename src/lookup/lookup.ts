@@ -9,7 +9,7 @@ import type { LocationDetail } from "../location/location-detail.ts";
 export interface LookupRequest {
   /** The photo the user took, as the camera returned it. */
   photo: Blob;
-  /** Where the problem is: the exact spot, how accurate it is, the address parts, and landmarks there. */
+  /** Where the problem is: the exact position, how accurate it is, the address parts, and landmarks there. */
   location: LocationDetail;
 }
 

@@ -10,9 +10,9 @@ const ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 /** How long FixFinder waits for an answer before carrying on without one. */
 export const GEOCODE_TIMEOUT_MS = 5_000;
 
-/** What Nominatim knows about a spot, cut down to what FixFinder uses. */
+/** What Nominatim knows about a position, cut down to what FixFinder uses. */
 export interface ReverseGeocode {
-  /** The name of the thing at the spot, like "Downtown Berkeley" (a station) or "Sather Road". Empty when unnamed. */
+  /** The name of the thing there, like "Downtown Berkeley" (a station) or "Sather Road". Empty when unnamed. */
   name: string;
   /** OpenStreetMap's kind of thing, like "railway", "highway", or "building". */
   category: string;
@@ -25,8 +25,8 @@ export interface ReverseGeocode {
   longitude: number | null;
 }
 
-// Coordinates rounded to 4 decimals (about 11 m) are one spot, so a retake from the same place reuses the answer, as
-// the usage policy asks, instead of asking again. The rounded spot is also what goes to Nominatim, so the answer a
+// Coordinates rounded to 4 decimals (about 11 m) count as one position, so a retake from the same place reuses the answer, as
+// the usage policy asks, instead of asking again. The rounded position is also what goes to Nominatim, so the answer a
 // retake reuses is exactly the one it would get.
 const cache = new Map<string, ReverseGeocode | null>();
 
@@ -36,7 +36,7 @@ export function clearGeocodeCache() {
 }
 
 /**
- * What Nominatim knows about the spot, or null when it has nothing there (the open ocean, say).
+ * What Nominatim knows about the position, or null when it has nothing there (the open ocean, say).
  * Throws when it cannot be reached or does not answer within GEOCODE_TIMEOUT_MS.
  */
 export async function reverseGeocode(latitude: number, longitude: number): Promise<ReverseGeocode | null> {

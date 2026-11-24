@@ -167,7 +167,7 @@ button { font: inherit; color: inherit; }
 .source { display: block; padding-block: 12px; font-size: 14px; line-height: 1.4; font-weight: 500; color: var(--link); text-decoration: none; }
 .source svg { margin-left: 6px; vertical-align: -2px; }
 .source:active { text-decoration: underline; }
-/* Placeholder note: the result is sample output, and the screen says so right under the heading. */
+/* Placeholder note: most of the result is sample output, and the screen says so right under the heading. */
 .placeholder-note { gap: 8px; border-color: var(--accent-track); background: var(--accent-soft); }
 .chip {
   align-self: flex-start; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
