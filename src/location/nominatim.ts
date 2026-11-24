@@ -20,6 +20,9 @@ export interface ReverseGeocode {
   type: string;
   /** Address parts under OpenStreetMap's keys: house_number, road, neighbourhood, city, postcode, and so on. */
   address: Record<string, string>;
+  /** Where the thing Nominatim matched is (a building's middle, say), which can differ from the phone's position. */
+  latitude: number | null;
+  longitude: number | null;
 }
 
 // Coordinates rounded to 4 decimals (about 11 m) are one spot, so a retake from the same place reuses the answer, as
@@ -46,7 +49,11 @@ export async function reverseGeocode(latitude: number, longitude: number): Promi
   const url = `${ENDPOINT}?format=jsonv2&addressdetails=1&zoom=18&lat=${lat}&lon=${lon}`;
   const response = await fetch(url, { signal: AbortSignal.timeout(GEOCODE_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`Nominatim answered ${response.status}`);
-  const body = (await response.json()) as Partial<ReverseGeocode> & { error?: string };
+  const body = (await response.json()) as Partial<Omit<ReverseGeocode, "latitude" | "longitude">> & {
+    error?: string;
+    lat?: string;
+    lon?: string;
+  };
 
   // Nominatim says "Unable to geocode" when nothing is there. That is an answer, so it is remembered too.
   const result: ReverseGeocode | null = body.error
@@ -56,6 +63,9 @@ export async function reverseGeocode(latitude: number, longitude: number): Promi
         category: body.category ?? "",
         type: body.type ?? "",
         address: body.address ?? {},
+        // Nominatim sends these as text.
+        latitude: body.lat !== undefined && Number.isFinite(Number(body.lat)) ? Number(body.lat) : null,
+        longitude: body.lon !== undefined && Number.isFinite(Number(body.lon)) ? Number(body.lon) : null,
       };
   cache.set(key, result);
   return result;

@@ -35,10 +35,49 @@ export const ROUGH_ACCURACY_METERS = 50;
 // boundary, and landuse names are areas ("Downtown Berkeley" the neighbourhood, not the station).
 const NOT_LANDMARKS = new Set(["highway", "place", "boundary", "landuse"]);
 
+/**
+ * A landmark's name with its kind when the name alone does not say what it is: "Downtown Berkeley" is a neighbourhood
+ * too, so the station reads "Downtown Berkeley station". A name that already says its kind ("Berkeley Public Library")
+ * and a building (whose kind is often just "yes" or "office") keep their name as it is.
+ */
 function landmarkOf(found: ReverseGeocode): string | null {
   const name = found.name.trim();
-  return name && !NOT_LANDMARKS.has(found.category) ? name : null;
+  if (!name || NOT_LANDMARKS.has(found.category)) return null;
+  const kind = found.type.replaceAll("_", " ").trim();
+  if (found.category === "building" || !kind || kind === "yes" || name.toLowerCase().includes(kind.toLowerCase())) {
+    return name;
+  }
+  return `${name} ${kind}`;
 }
+
+/** OpenStreetMap can list several house numbers on one building ("2449;2454;2460"). A person says the first. */
+function houseNumberOf(address: Record<string, string>): string | undefined {
+  return address.house_number?.split(/[;,]/)[0]?.trim() || undefined;
+}
+
+/**
+ * Farther than this from the building Nominatim matched, the user is likely outside it, on the street, so the
+ * location says "In front of". A first guess, to tune on real tests: a house's middle sits about this far back from
+ * the sidewalk.
+ */
+export const IN_FRONT_OF_METERS = 15;
+
+/** Straight-line distance in metres. Flat-earth maths is plenty at the scale of a block. */
+function metersBetween(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
+  const metersPerDegree = 111_320;
+  const dLat = (a.latitude - b.latitude) * metersPerDegree;
+  const dLon = (a.longitude - b.longitude) * metersPerDegree * Math.cos((a.latitude * Math.PI) / 180);
+  return Math.hypot(dLat, dLon);
+}
+
+/** True when the phone is far enough from the matched building to be standing outside it. */
+function outsideTheBuilding(found: ReverseGeocode, reading: Reading): boolean {
+  if (found.latitude === null || found.longitude === null) return false;
+  return metersBetween(reading, { latitude: found.latitude, longitude: found.longitude }) > IN_FRONT_OF_METERS;
+}
+
+/** The phone's reading, as describeLocation needs it. */
+export type Reading = Pick<Position, "latitude" | "longitude" | "accuracyMeters">;
 
 function cityOf(address: Record<string, string>): string | undefined {
   return address.city ?? address.town ?? address.village ?? address.hamlet;
@@ -55,21 +94,25 @@ export function isRough(accuracyMeters: number | null): boolean {
 
 /**
  * The location, the way a person would say it: a landmark and its street, or a street address, then the city.
- * A rough reading says "Near" and names only the street. Null when there is nothing a person would recognize.
+ * Standing outside the matched building says "In front of" its address. A rough reading says "Near" and names only
+ * the street. Null when there is nothing a person would recognize.
  */
-export function describeLocation(found: ReverseGeocode | null, accuracyMeters: number | null): string | null {
+export function describeLocation(found: ReverseGeocode | null, reading: Reading): string | null {
   if (!found) return null;
   const { address } = found;
-  const rough = isRough(accuracyMeters);
+  const rough = isRough(reading.accuracyMeters);
   const city = cityOf(address);
   const withCity = (phrase: string) => (city && phrase !== city ? `${phrase}, ${city}` : phrase);
 
   const road = address.road;
   if (road) {
     if (rough) return `Near ${withCity(road)}`;
-    const street = address.house_number ? `${address.house_number} ${road}` : road;
+    const houseNumber = houseNumberOf(address);
+    const street = houseNumber ? `${houseNumber} ${road}` : road;
     const landmark = landmarkOf(found);
-    return withCity(landmark ? `${landmark}, ${street}` : street);
+    if (landmark) return withCity(`${landmark}, ${street}`);
+    if (houseNumber && outsideTheBuilding(found, reading)) return `In front of ${withCity(street)}`;
+    return withCity(street);
   }
 
   // No street: a landmark alone, or failing that the neighbourhood, which is never exact enough to drop "Near".
@@ -98,7 +141,7 @@ export async function findLocation(position: Position): Promise<FoundLocation> {
   }
   const landmark = found ? landmarkOf(found) : null;
   return {
-    location: describeLocation(found, position.accuracyMeters),
+    location: describeLocation(found, position),
     detail: {
       ...spot,
       address: found ? { ...found.address } : null,

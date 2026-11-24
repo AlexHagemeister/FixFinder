@@ -38,6 +38,8 @@ const SHATTUCK: ReverseGeocode = {
   category: "building",
   type: "yes",
   address: { house_number: "2160", road: "Shattuck Avenue", city: "Berkeley", postcode: "94704" },
+  latitude: null,
+  longitude: null,
 };
 
 type Success = (position: { coords: { latitude: number; longitude: number } }) => void;
