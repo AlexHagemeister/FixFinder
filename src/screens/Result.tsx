@@ -1,14 +1,14 @@
 import { useRef } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { useReportFlow } from "../flow/flow-context.ts";
-import { BackIcon, BuildingIcon, ExternalIcon, TagIcon } from "../icons.tsx";
+import { BackIcon, BuildingIcon, ExternalIcon, PinIcon, TagIcon } from "../icons.tsx";
 import { PhotoInput } from "./PhotoInput.tsx";
 
-// Result: shows what FixFinder found, with the photo, the category, the responsible party, and its source.
+// Result: shows what FixFinder found, with the photo, the category, the location, the responsible party, and its source.
 // Layout and wording follow the prototype's review screen. Its Change controls and draft button are left out:
 // correcting the guess and drafting the report are not part of #1, and a control that does nothing is a false signifier.
 export function Result() {
-  const { photo, result, startReport } = useReportFlow();
+  const { photo, location, result, startReport } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
 
@@ -38,7 +38,7 @@ export function Result() {
           <div className="card pad stack placeholder-note" role="note" aria-label="Placeholder result">
             <span className="chip">Placeholder result</span>
             <span className="small">
-              FixFinder does not read photos yet. This is sample output, the same for every photo and location.
+              FixFinder does not read photos yet. Everything here except the location is sample output, the same for every photo.
             </span>
           </div>
         )}
@@ -51,6 +51,34 @@ export function Result() {
               <span className="small">{result.description}</span>
             </div>
           </div>
+          {location && (
+            <div className="row">
+              <PinIcon />
+              <div className="stack grow">
+                <span className="field-name">Location</span>
+                {location.location ? (
+                  <>
+                    <span className="value">{location.location}</span>
+                    {/* OpenStreetMap's licence asks for this credit wherever its data is shown. */}
+                    <a
+                      className="source"
+                      href="https://www.openstreetmap.org/copyright"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Location names © OpenStreetMap contributors
+                      <ExternalIcon />
+                    </a>
+                  </>
+                ) : (
+                  <span className="small">
+                    FixFinder couldn't put this location into words. It still uses where your phone was to find who
+                    is responsible.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           <div className="row">
             <BuildingIcon />
             <div className="stack grow">

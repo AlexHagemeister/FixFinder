@@ -19,8 +19,14 @@ A short phrase saying what the problem is, like "Pothole" or "Window smashed on 
 _Avoid_: category, classification, label, type
 
 **Location**:
-Where the problem is, said the way a person would describe it (a street address, an intersection, a landmark).
+Where the problem is, said the way a person would describe it (a street address, an intersection, a landmark). When the phone's reading is rough, it says "Near" and names only the street.
 _Avoid_: place, spot, coordinates, GPS
+
+**Location detail**:
+The fuller record of where the problem is, for FixFinder's lookup and never shown as it is: the exact position from the phone, how accurate it is, the address parts, and any landmarks there. The location is the phrase the user sees, and the location detail is what the lookup works from.
+_Avoid_: location data, geocode, coordinates
+
+In code, `ReverseGeocode` names Nominatim's own answer for a position, which the location detail is built from. It is not another word for the location detail.
 
 **Report**:
 The message about one problem that goes to the responsible party. FixFinder drafts it, the user checks it, and only the user submits it.
@@ -90,10 +96,10 @@ The screen FixFinder shows after the photo is taken, listing each step it takes 
 The screen FixFinder shows when the user denies location. It says FixFinder needs the location to find who is responsible and stops there, and offers Ask again, which carries on with the same photo. When the phone will likely not ask again, it lists the steps for turning location back on in the phone's settings.
 
 **Result**:
-The screen that shows what FixFinder found: the user's photo, the description, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
+The screen that shows what FixFinder found: the user's photo, the description, the location, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
 
 **Placeholder result**:
-The chip and note on Result that say its content is sample output, shown while FixFinder does not read photos yet.
+The chip and note on Result that say everything on it except the location is sample output, shown while FixFinder does not read photos yet.
 
 **Notice**:
 A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, or Location needed's line when location is still off after Ask again.

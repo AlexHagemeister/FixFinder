@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { phoneWillNotAskAgain } from "../location/permission.ts";
+import { findLocation } from "../location/location-detail.ts";
 import { getPosition, PositionError, type Position } from "../location/position.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import { FlowContext, type FlowState, type FlowValue, type StepId, type StepStatus } from "./flow-context.ts";
@@ -20,7 +21,14 @@ type PositionOutcome = { position: Position } | { error: unknown; answeredInMs: 
 
 const ALL_WAITING: Record<StepId, StepStatus> = { photo: "waiting", location: "waiting", responsibleParty: "waiting" };
 const AT_LOCATION: Record<StepId, StepStatus> = { photo: "done", location: "current", responsibleParty: "waiting" };
-const EMPTY: FlowState = { photo: null, steps: ALL_WAITING, result: null, notice: null, locationNeeded: null };
+const EMPTY: FlowState = {
+  photo: null,
+  steps: ALL_WAITING,
+  location: null,
+  result: null,
+  notice: null,
+  locationNeeded: null,
+};
 
 const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -98,7 +106,7 @@ export function ReportFlow() {
         }
 
         // Step 2: pinning down the location. A failure also waits out the step's pause, so after Ask again the
-        // Working screen shows "Asking your phone where you are" before a second denial leads back.
+        // Working screen shows "Getting your location" before a second denial leads back.
         const askedAt = Date.now();
         const [outcome] = await Promise.all([
           getPosition().then(
@@ -125,10 +133,14 @@ export function ReportFlow() {
           return;
         }
         const { position } = outcome;
+        // Puts the position into words. This never fails: without a name, the report carries on with the exact position.
+        const found = await findLocation(position);
+        if (!isLatest()) return;
         // The denial is behind us now. Clearing it here, not in Ask again, keeps Location needed from sending the
         // user Home while the navigation to Working is still on its way.
         setState((current) => ({
           ...current,
+          location: found,
           locationNeeded: null,
           steps: { ...current.steps, location: "done", responsibleParty: "current" },
         }));
@@ -137,7 +149,7 @@ export function ReportFlow() {
         let result: LookupResponse;
         try {
           [result] = await Promise.all([
-            lookup({ photo: file, latitude: position.latitude, longitude: position.longitude }),
+            lookup({ photo: file, location: found.detail }),
             pause(STEP_MIN_MS),
           ]);
         } catch {
@@ -173,6 +185,7 @@ export function ReportFlow() {
       setState({
         photo: holdPhoto(file),
         steps: { ...ALL_WAITING, photo: "current" },
+        location: null,
         result: null,
         notice: null,
         locationNeeded: null,
@@ -201,6 +214,7 @@ export function ReportFlow() {
       setState({
         photo: holdPhoto(file),
         steps: AT_LOCATION,
+        location: null,
         result: null,
         notice: null,
         locationNeeded: { phoneWillNotAsk, stillOff: false },
@@ -233,7 +247,7 @@ export function ReportFlow() {
       }
       // The photo could not be saved, so the report carries on in memory, on this page.
       askingRef.current = false;
-      setState((current) => ({ ...current, steps: AT_LOCATION, result: null }));
+      setState((current) => ({ ...current, steps: AT_LOCATION, location: null, result: null }));
       // Replace, so the back gesture from Working goes to Home and not to the Location needed screen.
       navigate("/working", { replace: true });
       runSteps(photo.file, "location");
