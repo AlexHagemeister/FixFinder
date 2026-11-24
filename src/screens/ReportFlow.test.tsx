@@ -4,12 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NOTICES } from "../flow/notices.ts";
 import { reloadPage } from "../flow/reload.ts";
 import { clearPhoto, loadPhoto, SAVED_PHOTO_MAX_AGE_MS, savePhoto, type SavedPhoto } from "../flow/saved-photo.ts";
+import { reverseGeocode, type ReverseGeocode } from "../location/nominatim.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import { routes } from "../routes.tsx";
 
 // The real lookup waits on purpose, and the step pacing holds each step on screen. Neither belongs in a test.
 vi.mock("../lookup/lookup.ts", () => ({ lookup: vi.fn() }));
 vi.mock("../flow/timing.ts", () => ({ STEP_MIN_MS: 0, FINISH_PAUSE_MS: 0 }));
+// Place names come from Nominatim over the network, so tests answer for it.
+vi.mock("../location/nominatim.ts", () => ({ reverseGeocode: vi.fn() }));
 // jsdom has no IndexedDB and cannot reload a page, so the saved photo and the reload are stand-ins too.
 vi.mock("../flow/saved-photo.ts", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../flow/saved-photo.ts")>()),
@@ -28,6 +31,14 @@ const SAMPLE: LookupResponse = {
 };
 
 const BERKELEY = { latitude: 37.8716, longitude: -122.2727 };
+
+// What Nominatim says about the spot: a street address in Berkeley.
+const SHATTUCK: ReverseGeocode = {
+  name: "",
+  category: "building",
+  type: "yes",
+  address: { house_number: "2160", road: "Shattuck Avenue", city: "Berkeley", postcode: "94704" },
+};
 
 type Success = (position: { coords: { latitude: number; longitude: number } }) => void;
 type Failure = (error: { code: number; message: string }) => void;
@@ -99,6 +110,8 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   vi.mocked(lookup).mockReset();
   vi.mocked(lookup).mockResolvedValue(SAMPLE);
+  vi.mocked(reverseGeocode).mockReset();
+  vi.mocked(reverseGeocode).mockResolvedValue(SHATTUCK);
   vi.mocked(savePhoto).mockReset();
   vi.mocked(savePhoto).mockResolvedValue(true);
   vi.mocked(loadPhoto).mockReset();
@@ -137,7 +150,7 @@ describe("Report flow", () => {
 
     expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/result");
-    expect(lookup).toHaveBeenCalledWith({ photo: file, ...BERKELEY });
+    expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
 
     expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
     expect(screen.getByText("Pothole")).toBeInTheDocument();
@@ -161,7 +174,7 @@ describe("Report flow", () => {
 
     expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/result");
-    expect(lookup).toHaveBeenCalledWith({ photo: file, ...BERKELEY });
+    expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
     expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
   });
 
@@ -189,6 +202,62 @@ describe("Report flow", () => {
     expect(screen.getByRole("heading", { level: 1, name: "See something broken?" })).toBeInTheDocument();
     expect(geo.getCurrentPosition).not.toHaveBeenCalled();
     expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it("shows the location it found on Working once the location step is done", async () => {
+    // The lookup never answers, so Working stays on screen with the location step done.
+    vi.mocked(lookup).mockReturnValue(new Promise(() => {}));
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.allow();
+
+    expect(await screen.findByText("2160 Shattuck Avenue, Berkeley")).toBeInTheDocument();
+    expect(reverseGeocode).toHaveBeenCalledWith(BERKELEY.latitude, BERKELEY.longitude);
+  });
+
+  it("shows the location on Result with OpenStreetMap's credit, and sends the location detail to the lookup", async () => {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    const file = await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.allow();
+
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(screen.getByText("Location")).toBeInTheDocument();
+    expect(screen.getByText("2160 Shattuck Avenue, Berkeley")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /© OpenStreetMap contributors/ })).toHaveAttribute(
+      "href",
+      "https://www.openstreetmap.org/copyright",
+    );
+    expect(lookup).toHaveBeenCalledWith({
+      photo: file,
+      location: {
+        ...BERKELEY,
+        accuracyMeters: null,
+        address: SHATTUCK.address,
+        landmarks: [],
+      },
+    });
+  });
+
+  it("carries on when it cannot put the location into words, and the lookup still gets the exact spot", async () => {
+    vi.mocked(reverseGeocode).mockRejectedValue(new TypeError("Failed to fetch"));
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.allow();
+
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(screen.getByText(/couldn't put this location into words/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /OpenStreetMap/ })).not.toBeInTheDocument();
+    expect(lookup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: { ...BERKELEY, accuracyMeters: null, address: null, landmarks: [] },
+      }),
+    );
   });
 
   it("labels the result as placeholder output", async () => {
@@ -416,7 +485,7 @@ describe("Location needed", () => {
     expect(router.state.location.pathname).toBe("/result");
     expect(lookup).toHaveBeenCalledTimes(1);
     expect(vi.mocked(lookup).mock.calls[0]![0].photo).toBe(file);
-    expect(lookup).toHaveBeenCalledWith({ photo: file, ...BERKELEY });
+    expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     expect(URL.revokeObjectURL).not.toHaveBeenCalled();
     expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
@@ -535,7 +604,7 @@ describe("App start with a saved photo", () => {
 
       expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
       expect(router.state.location.pathname).toBe("/result");
-      expect(lookup).toHaveBeenCalledWith({ photo: record.photo, ...BERKELEY });
+      expect(lookup).toHaveBeenCalledWith({ photo: record.photo, location: expect.objectContaining(BERKELEY) });
       // The finished report no longer needs a saved photo.
       expect(clearPhoto).toHaveBeenCalledTimes(1);
     },

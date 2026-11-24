@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import type { FoundLocation } from "../location/location-detail.ts";
 import type { LookupResponse } from "../lookup/lookup.ts";
 
 /** The three steps the Working screen shows, in order. */
@@ -14,6 +15,8 @@ export interface FlowState {
    */
   photo: { file: File; url: string } | null;
   steps: Record<StepId, StepStatus>;
+  /** What the location step found: the location to show, and the location detail for the lookup. */
+  location: FoundLocation | null;
   result: LookupResponse | null;
   /** A short message for Home when a run stopped early, such as when the location could not be found. */
   notice: string | null;

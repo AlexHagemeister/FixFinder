@@ -1,9 +1,11 @@
-// Asks the phone where the user is standing. The result is raw latitude and longitude for the lookup.
-// It is never shown on screen: a location reads the way a person would describe it (VISION invariant 9).
+// Asks the phone where the user is standing. The result is raw latitude and longitude, and how accurate they are.
+// It is never shown on screen: location-detail.ts puts it into words (VISION invariant 9).
 
 export interface Position {
   latitude: number;
   longitude: number;
+  /** How far off the reading may be, in metres. Null when the phone did not say. */
+  accuracyMeters: number | null;
 }
 
 /** Why FixFinder could not get a position. */
@@ -38,7 +40,12 @@ export function getPosition(): Promise<Position> {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (found) => resolve({ latitude: found.coords.latitude, longitude: found.coords.longitude }),
+      (found) =>
+        resolve({
+          latitude: found.coords.latitude,
+          longitude: found.coords.longitude,
+          accuracyMeters: Number.isFinite(found.coords.accuracy) ? found.coords.accuracy : null,
+        }),
       (error) => {
         const reason: PositionFailure =
           error.code === PERMISSION_DENIED ? "denied" : error.code === POSITION_UNAVAILABLE ? "unavailable" : "timeout";

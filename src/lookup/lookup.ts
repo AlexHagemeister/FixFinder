@@ -3,12 +3,14 @@
 // This is a stand-in. It has the shape of the future Supabase Edge Function, so the round trip later replaces the
 // body of `lookup` with a `fetch` to that function and no screen changes. It makes no network or AI calls.
 
+import type { LocationDetail } from "../location/location-detail.ts";
+
 /** What the app sends to the lookup. */
 export interface LookupRequest {
   /** The photo the user took, as the camera returned it. */
   photo: Blob;
-  latitude: number;
-  longitude: number;
+  /** Where the problem is: the exact spot, how accurate it is, the address parts, and landmarks there. */
+  location: LocationDetail;
 }
 
 /** Where FixFinder's answer about the responsible party came from, so the user can check it (VISION invariant 4). */
