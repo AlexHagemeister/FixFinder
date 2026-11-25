@@ -35,7 +35,7 @@ export function DescribeYourself() {
           <img className="thumb" src={photo.url} alt="Your photo" />
           <h1 className="h-l">Describe the problem</h1>
         </div>
-        <form id="describe-form" className="stack" onSubmit={onSubmit}>
+        <form id="describe-form" className="stack describe-form" onSubmit={onSubmit}>
           <label className="field-label" htmlFor="own-description">
             What is wrong?
           </label>

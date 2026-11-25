@@ -187,6 +187,7 @@ button { font: inherit; color: inherit; }
 .settings-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
 
 /* Describe it yourself: one text field for the description. 17px text keeps iPhone Safari from zooming in on focus. */
+.describe-form { gap: 8px; }
 .field-label { font-size: 15px; font-weight: 600; }
 .text-input {
   width: 100%; min-height: 52px; padding: 12px 14px;
