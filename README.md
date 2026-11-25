@@ -85,7 +85,7 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Real AI calls spend the team's shared course budget, so make them on purpose and keep an eye on spend with `bun run model-calls`.
 
-**Stand-in or real.** `bun run dev` uses the stand-in photo reader: every photo gets the description "Pothole", nothing is sent, and Result's placeholder note says the description is sample output. The live app and every branch preview always use the real photo reader. To use it on your machine, run `bun run dev:real-ai` (it opens at http://localhost:5174). The tests never make real calls.
+**Stand-in or real.** `bun run dev` uses the stand-in photo reader: every photo gets the description "Pothole", nothing is sent, and Result marks the description with a Sample chip. The live app and every branch preview always use the real photo reader. To use it on your machine, run `bun run dev:real-ai` (it opens at http://localhost:5174). The tests never make real calls.
 
 **When you need the real thing.** Use the stand-in for screens, flows, wording, and layout. Use the real photo reader only when the change is about what it says: its instructions or model in `worker/`, how the app handles its answers, or checking it on real photos. A page that retries in a loop can spend the day's cap in minutes.
 

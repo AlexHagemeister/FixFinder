@@ -269,20 +269,20 @@ describe("Report flow", () => {
     );
   });
 
-  it("labels the responsible party and source as sample output, and not the description read from the photo", async () => {
+  it("marks the responsible party as sample output, and not the description read from the photo", async () => {
     const geo = stubGeolocation();
     await renderAt("/");
     await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
     geo.allow();
 
-    const note = await screen.findByRole("note", { name: "Placeholder result" });
-    expect(note).toHaveTextContent("Placeholder result");
-    expect(note).toHaveTextContent("The responsible party and source are sample output");
-    expect(note).not.toHaveTextContent("description");
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(screen.getAllByText("Sample")).toHaveLength(1);
+    expect(screen.getByText("Responsible party").parentElement).toHaveTextContent("Sample");
+    expect(screen.getByText("Description").parentElement).not.toHaveTextContent("Sample");
   });
 
-  it("labels the description as sample output too when it came from the stand-in photo reader", async () => {
+  it("marks the description as sample output too when it came from the stand-in photo reader", async () => {
     vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: "Pothole", sample: true });
     const geo = stubGeolocation();
     await renderAt("/");
@@ -290,9 +290,9 @@ describe("Report flow", () => {
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
     geo.allow();
 
-    const note = await screen.findByRole("note", { name: "Placeholder result" });
-    expect(note).toHaveTextContent("the description is sample output");
-    expect(screen.getByText("Pothole")).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(screen.getByText("Description").parentElement).toHaveTextContent("Sample");
+    expect(screen.getAllByText("Sample")).toHaveLength(2);
   });
 
   // Round 1 of #25 stops on Home for both. Round 2 gives each its own next steps on Working.

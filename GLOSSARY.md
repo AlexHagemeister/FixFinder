@@ -98,8 +98,9 @@ The screen FixFinder shows when the user denies location. It says FixFinder need
 **Result**:
 The screen that shows what FixFinder found: the user's photo, the description, the location, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
 
-**Placeholder result**:
-The chip and note on Result that name what on it is sample output: the responsible party and source, while FixFinder does not look them up yet, and the description too when it came from the stand-in.
+**Sample chip**:
+The small grey "Sample" chip beside a field on Result whose content is sample output, not FixFinder's real answer: the responsible party while FixFinder does not look it up yet, and the description when it came from the stand-in. Home's placeholder sections use the same chip.
+_Avoid_: placeholder result (the note it replaced)
 
 **Photo reader**:
 The AI step that reads the photo and suggests the description, or says it couldn't tell what the problem is. It runs in the Worker (`POST /api/describe-photo`). "Can't reach the photo reader" covers no connection, no answer in time, and the photo reader refusing a call to protect the budget.
