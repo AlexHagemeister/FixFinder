@@ -1,6 +1,6 @@
 // The one path to OpenRouter (issue #12). Every model the Worker uses comes from `openRouterModel`, which wraps it so
 // each call the model makes, whether through generateText, streamText, or one step of a tool loop, leaves a record of
-// what it was for and what it cost. No other file may import the OpenRouter provider: one-path.test.ts checks.
+// what it was for and what it cost. No other file may import the OpenRouter provider: src/one-model-path.test.ts checks.
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from "ai";
@@ -34,6 +34,7 @@ export function openRouterModel(env: ModelCallsEnv, operation: string, modelId: 
 }
 
 type Usage = { inputTokens: { total: number | undefined }; outputTokens: { total: number | undefined } };
+const noUsage: Usage = { inputTokens: { total: undefined }, outputTokens: { total: undefined } };
 
 /** Wraps a model so each call hands its record to `save`. Exported for tests, which pass a mock model. */
 export function recordedModel(
@@ -57,27 +58,73 @@ export function recordedModel(
     }
   };
 
+  // A call that fails or is cut off may still have been billed, so it gets a row too. OpenRouter reports cost only in
+  // a finished answer, so the row has no tokens or cost and shows up in the totals' callsWithoutCost.
+  const unfinished = async (modelId: string, what: string, error?: unknown) => {
+    console.error(`FixFinder recorded a model call that ${what}, with no cost (${operation}, ${modelId})`, error);
+    await record(modelId, noUsage, undefined);
+  };
+
   const middleware: LanguageModelMiddleware = {
     specificationVersion: "v4",
     wrapGenerate: async ({ doGenerate, model }) => {
-      const result = await doGenerate();
+      let result;
+      try {
+        result = await doGenerate();
+      } catch (error) {
+        await unfinished(model.modelId, "failed", error);
+        throw error;
+      }
       await record(result.response?.modelId ?? model.modelId, result.usage, result.providerMetadata);
       return result;
     },
     wrapStream: async ({ doStream, model }) => {
-      const result = await doStream();
+      let result;
+      try {
+        result = await doStream();
+      } catch (error) {
+        await unfinished(model.modelId, "failed", error);
+        throw error;
+      }
       let modelId = model.modelId;
+      let recorded = false;
+      const reader = result.stream.getReader();
       return {
         ...result,
-        stream: result.stream.pipeThrough(
-          new TransformStream({
-            async transform(part, controller) {
+        stream: new ReadableStream({
+          async pull(controller) {
+            try {
+              const { done, value: part } = await reader.read();
+              if (done) {
+                if (!recorded) {
+                  recorded = true;
+                  await unfinished(modelId, "ended without finishing");
+                }
+                controller.close();
+                return;
+              }
               if (part.type === "response-metadata" && part.modelId) modelId = part.modelId;
-              if (part.type === "finish") await record(modelId, part.usage, part.providerMetadata);
+              if (part.type === "finish" && !recorded) {
+                recorded = true;
+                await record(modelId, part.usage, part.providerMetadata);
+              }
               controller.enqueue(part);
-            },
-          }),
-        ),
+            } catch (error) {
+              if (!recorded) {
+                recorded = true;
+                await unfinished(modelId, "was cut off", error);
+              }
+              controller.error(error);
+            }
+          },
+          async cancel(reason) {
+            if (!recorded) {
+              recorded = true;
+              await unfinished(modelId, "was cancelled", reason);
+            }
+            await reader.cancel(reason);
+          },
+        }),
       };
     },
   };

@@ -117,6 +117,93 @@ describe("recordedModel", () => {
     error.mockRestore();
   });
 
+  it("records a call that fails, with no cost, and still throws", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const saved: ModelCallRecord[] = [];
+    const model = recordedModel(
+      new MockLanguageModelV4({
+        doGenerate: async () => {
+          throw new Error("upstream failed");
+        },
+      }),
+      "describe",
+      async (r) => {
+        saved.push(r);
+      },
+    );
+
+    await expect(generateText({ model, prompt: "What is in this photo?", maxRetries: 0 })).rejects.toThrow();
+
+    expect(saved).toMatchObject([{ operation: "describe", inputTokens: 0, outputTokens: 0, costUsd: null }]);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("call that failed"), expect.anything());
+    error.mockRestore();
+  });
+
+  it("records a streamed call that is cut off before it finishes", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const saved: ModelCallRecord[] = [];
+    const model = recordedModel(
+      new MockLanguageModelV4({
+        doStream: {
+          stream: new ReadableStream({
+            start(controller) {
+              controller.enqueue({ type: "response-metadata", modelId: "test/streamed" });
+              controller.enqueue({ type: "text-start", id: "t" });
+              controller.enqueue({ type: "text-delta", id: "t", delta: "Pot" });
+              controller.error(new Error("connection lost"));
+            },
+          }),
+        },
+      }),
+      "draftReportText",
+      async (r) => {
+        saved.push(r);
+      },
+    );
+
+    const result = streamText({ model, prompt: "Draft it", onError: () => {} });
+    // The caller still sees the stream's error.
+    await expect(
+      (async () => {
+        for await (const _ of result.fullStream) {
+          // Read to the end, as a caller would.
+        }
+      })(),
+    ).rejects.toThrow("connection lost");
+
+    expect(saved).toMatchObject([{ operation: "draftReportText", costUsd: null }]);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("was cut off"), expect.any(Error));
+    error.mockRestore();
+  });
+
+  it("records a streamed call that ends without finishing", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const saved: ModelCallRecord[] = [];
+    const model = recordedModel(
+      new MockLanguageModelV4({
+        doStream: {
+          stream: convertArrayToReadableStream([
+            { type: "text-start", id: "t" },
+            { type: "text-delta", id: "t", delta: "Pot" },
+          ]),
+        },
+      }),
+      "draftReportText",
+      async (r) => {
+        saved.push(r);
+      },
+    );
+
+    const result = streamText({ model, prompt: "Draft it", onError: () => {} });
+    for await (const _ of result.fullStream) {
+      // Read to the end, as a caller would.
+    }
+
+    expect(saved).toMatchObject([{ operation: "draftReportText", costUsd: null }]);
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("ended without finishing"), undefined);
+    error.mockRestore();
+  });
+
   it("records a null cost when OpenRouter reports none", async () => {
     const saved: ModelCallRecord[] = [];
     const model = recordedModel(new MockLanguageModelV4({ doGenerate: mockAnswer("Pothole", null) }), "describe", async (r) => {
