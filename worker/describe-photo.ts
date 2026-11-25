@@ -50,11 +50,10 @@ const answerSchema = z.object({
 });
 
 // Words that mean the model is talking about itself or the photo instead of naming a problem (criterion 6 on #25).
-// Any mention of the photo itself counts ("Blurry image", "Photo too dark"): a rare real description that uses one of
-// those words ("Broken photo radar sign") is refused too, and the user gets Retake photo or Describe it yourself. "I"
-// counts only as the model speaking, so "Pothole on I-80" gets through.
+// They are phrases, not bare words, so a real description that happens to use one ("Pothole on I-80", "Unclear lane
+// markings", "Broken photo radar sign") still gets through.
 const SELF_TALK =
-  /\b(sorry|apolog\w*|unable|cannot|can't|can not|could not|couldn't|not sure|hard to (say|tell)|to tell|identify|photos?|images?|pictures?)\b|(^|\s)i('m|’m|\s+(am|see|think|can|cannot|can't|could|do|don't|was|would|notice))\b/i;
+  /\b(sorry|apolog\w*|unable|cannot|can't|can not|could not|couldn't|not sure|hard to (say|tell)|to tell|identify|(the|this) (photo|image|picture))\b|(^|\s)i('m|’m|\s+(am|see|think|can|cannot|can't|could|do|don't|was|would|notice))\b/i;
 
 // Answers that say there is nothing to name: "None", "N/A", "Nothing looks broken", "No problem visible".
 const NON_ANSWER =

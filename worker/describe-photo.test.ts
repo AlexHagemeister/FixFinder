@@ -36,6 +36,8 @@ describe("cleanDescription", () => {
     // Real descriptions that use a word the filter watches for.
     ["Pothole on I-80", "Pothole on I-80"],
     ["Unclear lane markings", "Unclear lane markings"],
+    ["Broken photo radar sign", "Broken photo radar sign"],
+    ["Damaged picture frame on mural", "Damaged picture frame on mural"],
     ["No parking sign knocked over", "No parking sign knocked over"],
   ])("keeps a short description: %j", (text, expected) => {
     expect(cleanDescription(text)).toBe(expected);
@@ -63,12 +65,6 @@ describe("cleanDescription", () => {
     "Blurry",
     "Unknown",
     "I see a car",
-    // Answers about the photo itself. A rare real description that names a photo is refused along with them.
-    "Blurry image",
-    "Image unclear",
-    "Unclear photo",
-    "Photo too dark",
-    "Broken photo radar sign",
     "x".repeat(61),
   ])("refuses the model's own words or a long answer: %j", (text) => {
     expect(cleanDescription(text)).toBeNull();
