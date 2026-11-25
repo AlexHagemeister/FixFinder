@@ -9,6 +9,7 @@ import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import { routes } from "../routes.tsx";
 
 const mapEvents = vi.hoisted(() => ({
+  moveStart: () => {},
   moveEnd: () => {},
   tilesLoaded: () => {},
 }));
@@ -17,6 +18,7 @@ vi.mock("leaflet", () => ({
   map: () => ({
     setView() { return this; },
     on(event: string, callback: () => void) {
+      if (event === "movestart") mapEvents.moveStart = callback;
       if (event === "moveend") mapEvents.moveEnd = callback;
     },
     getCenter: () => ({ wrap: () => ({ lat: 37.87, lng: -122.27, distanceTo: () => 100 }) }),
@@ -172,11 +174,15 @@ describe("Report flow", () => {
     const edit = await screen.findByRole("button", { name: "Change location" });
 
     fireEvent.click(edit);
-    await screen.findByRole("dialog", { name: "Change location" });
-    act(() => {
-      mapEvents.tilesLoaded();
-      mapEvents.moveEnd();
-    });
+    const picker = within(await screen.findByRole("dialog", { name: "Change location" }));
+    act(() => mapEvents.tilesLoaded());
+    expect(picker.getByRole("status")).toHaveTextContent("Current location: 2160 Shattuck Avenue, Berkeley");
+    act(() => mapEvents.moveStart());
+    expect(picker.getByRole("status")).toHaveTextContent("Adjusting the pin");
+    expect(picker.getByRole("status")).not.toHaveTextContent("Shattuck");
+    expect(picker.getByRole("button", { name: "Use this location" })).toBeDisabled();
+    act(() => mapEvents.moveEnd());
+    expect(picker.getByRole("status")).toHaveTextContent("confirm the pin and look up its name");
     expect(reverseGeocode).toHaveBeenCalledTimes(1);
     await act(async () => { await router.navigate(-1); });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

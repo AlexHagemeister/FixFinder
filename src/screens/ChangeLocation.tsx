@@ -16,7 +16,7 @@ export function ChangeLocation({ location, onCancel, onConfirm }: ChangeLocation
   const mapInstance = useRef<LeafletMap | null>(null);
   const confirming = useRef(false);
   const [mapStatus, setMapStatus] = useState<"loading" | "ready" | "unavailable">("loading");
-  const [moved, setMoved] = useState(false);
+  const [pinStatus, setPinStatus] = useState<"unchanged" | "moving" | "moved">("unchanged");
   const [saving, setSaving] = useState(false);
   const { latitude, longitude } = location.detail;
 
@@ -40,8 +40,10 @@ export function ChangeLocation({ location, onCancel, onConfirm }: ChangeLocation
     });
     tiles.on("load", () => setMapStatus(hasTiles ? "ready" : "unavailable"));
     tiles.addTo(picker);
-    picker.on("movestart", () => setMoved(false));
-    picker.on("moveend", () => setMoved(picker.getCenter().wrap().distanceTo(original) >= 1));
+    picker.on("movestart", () => setPinStatus("moving"));
+    picker.on("moveend", () => {
+      setPinStatus(picker.getCenter().wrap().distanceTo(original) >= 1 ? "moved" : "unchanged");
+    });
     return () => {
       mapInstance.current = null;
       picker.remove();
@@ -80,12 +82,14 @@ export function ChangeLocation({ location, onCancel, onConfirm }: ChangeLocation
         </div>
         <p className="small" role="status">
           {saving ? "Finding a name for this location…"
+            : pinStatus === "moving" ? "Adjusting the pin…"
             : mapStatus === "unavailable" ? "Map tiles are unavailable. Cancel to keep the current location."
             : mapStatus === "loading" ? "Loading the map…"
-            : moved ? "Use this location to confirm the pin."
-            : location.location ?? "FixFinder couldn't put this location into words."}
+            : pinStatus === "moved" ? "Use this location to confirm the pin and look up its name."
+            : location.location ? `Current location: ${location.location}`
+            : "FixFinder couldn't put the current location into words."}
         </p>
-        <button type="button" className="btn primary" disabled={saving || !moved || mapStatus !== "ready"} onClick={() => void confirm()}>
+        <button type="button" className="btn primary" disabled={saving || pinStatus !== "moved" || mapStatus !== "ready"} onClick={() => void confirm()}>
           Use this location
         </button>
         <button type="button" className="btn text" onClick={onCancel}>Cancel</button>
