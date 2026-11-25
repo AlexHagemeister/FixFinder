@@ -23,6 +23,8 @@
   // too: preview calls cost real money and go in the same record as live ones. The OpenRouter key is a secret, set
   // with commands, never here (README § Keys and secrets).
   "previews": {
+    // TEMPORARY (issue #12): turns on /api/model-check on previews only. Deleted before the PR merges.
+    "vars": { "MODEL_CHECK": "on" },
     "d1_databases": [
       {
         "binding": "MODEL_CALLS_DB",
