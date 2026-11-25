@@ -1,0 +1,22 @@
+{
+  // The Worker runs on Cloudflare's runtime, not in a browser, so it gets Cloudflare's types instead of the DOM's.
+  // worker-configuration.d.ts comes from `bunx wrangler types worker/worker-configuration.d.ts`: rerun it after
+  // changing wrangler.jsonc.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": [],
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true
+  },
+  "include": ["."]
+}

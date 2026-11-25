@@ -63,6 +63,8 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 **Where it lives.** Cloudflare hosts those files on its free plan. Nobody on the team pays anything for hosting.
 
+**Where the AI runs.** Real AI calls run only on Cloudflare, in the Worker script in `worker/`, which answers the app's `/api/...` requests. The Worker holds the OpenRouter key, and every model call it makes goes through `worker/model-calls.ts`. That file records each call's operation, model, tokens, and cost in a Cloudflare database (D1). A test fails if any other file reaches OpenRouter, so no call goes unrecorded. The database's tables are defined in `migrations/`. After adding a migration there, apply it with `bunx wrangler d1 migrations apply fixfinder-model-calls --remote`. On your own machine, `bun run dev` sends `/api/...` requests to the live Worker, so you never need a key. To try a change to the Worker code itself, push the branch and use its preview link.
+
 **What happens when you push a branch.** Cloudflare builds the branch and puts it at its own preview link, so you can try your change on a phone before anyone merges it. The link is the branch name with slashes turned into dashes, then `-fixfinder.alexhagemeister.workers.dev`. For example, the branch `issue-1/phone-app-shell` lives at `issue-1-phone-app-shell-fixfinder.alexhagemeister.workers.dev`.
 
 **What happens when you open a pull request.** Two automatic checks run on it. `ci` installs the app, checks the TypeScript, builds it, and runs the tests. `Workers Builds: fixfinder` is Cloudflare building the preview link. A red check means something broke.
@@ -73,13 +75,15 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 **This repo is public. Never commit an API key.**
 
-- Deployed keys live in the Supabase project's Edge Function secrets, never in the app's own code, since everything in the app is sent to every phone.
-- Local keys go in a `.env` file on your own machine. `.env` files never get committed.
+- The team's OpenRouter key lives only in Cloudflare, as a secret on the Worker, never in the app's own code, since everything in the app is sent to every phone. Nobody needs a copy of it to build FixFinder.
+- Alex sets it. `bunx wrangler secret put OPENROUTER_API_KEY` sets it for the live app, and `bunx wrangler preview base-config secret put OPENROUTER_API_KEY` sets it for every branch preview created afterward. A branch pushed before that needs `bunx wrangler preview secret put OPENROUTER_API_KEY`, run on that branch. Without the key, the Worker fails and nothing is spent.
 - If a key does get committed, tell the team right away so it can be revoked. Deleting it in a later commit does not remove it from the history.
 
 ## AI usage
 
-Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Turn on real AI calls only on purpose, and check in the team Discord first.
+Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Real AI calls spend the team's shared course budget, so make them on purpose and keep an eye on spend with `bun run model-calls`.
+
+Every model call is recorded with what it cost. `bun run model-calls` saves the records to `model-calls.json` (not committed) and prints total spend, the most expensive operation, and the spend for each operation. Agents can search that file, for example with `jq`. The same records are at https://fixfinder.alexhagemeister.workers.dev/api/model-calls.
 
 Mistakes the app's AI step makes during development go in the [AI failure log](docs/ai-failure-log.md).
 
@@ -105,4 +109,6 @@ bun run test     # run the tests once
 bun run build    # build the app into dist/
 ```
 
-`bun run typecheck` checks the TypeScript. Use `bun run test`, not `bun test`: the second runs Bun's own test runner instead of Vitest.
+`bun run typecheck` checks the TypeScript, for the app and for the Worker. Use `bun run test`, not `bun test`: the second runs Bun's own test runner instead of Vitest.
+
+You don't need an API key. `bun run dev` sends the app's `/api/...` requests to the live Worker, which holds the key and records each call (see [Where the AI runs](#how-fixfinder-is-built-and-shipped)). Real AI calls from your machine still spend the team's budget.
