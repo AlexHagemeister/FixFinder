@@ -1,16 +1,17 @@
 import { useRef } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon, BuildingIcon, ExternalIcon, PinIcon, TagIcon } from "../icons.tsx";
 import { PhotoInput } from "./PhotoInput.tsx";
+import { ChangeLocation } from "./ChangeLocation.tsx";
 
-// Result: shows what FixFinder found, with the photo, the category, the location, the responsible party, and its source.
-// Layout and wording follow the prototype's review screen. Its Change controls and draft button are left out:
-// correcting the guess and drafting the report are not part of #1, and a control that does nothing is a false signifier.
 export function Result() {
-  const { photo, location, result, startReport } = useReportFlow();
+  const { photo, location, correctedLocation, result, startReport, setCorrectedLocation } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editingLocation = searchParams.has("change-location");
+  const shownLocation = correctedLocation ?? location;
 
   // A reload or a direct visit has nothing in memory to show.
   if (!photo) return <Navigate to="/" replace />;
@@ -51,14 +52,30 @@ export function Result() {
               <span className="small">{result.description}</span>
             </div>
           </div>
-          {location && (
+          {shownLocation && (
             <div className="row">
               <PinIcon />
               <div className="stack grow">
-                <span className="field-name">Location</span>
-                {location.location ? (
+                <button
+                  type="button"
+                  className="location-change"
+                  aria-label="Change location"
+                  aria-describedby="result-location"
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.set("change-location", "");
+                    setSearchParams(next);
+                  }}
+                >
+                  <span className="stack grow">
+                    <span className="field-name">Location</span>
+                    <span className="value" id="result-location">{shownLocation.location ?? "Location name unavailable"}</span>
+                  </span>
+                  <span className="location-change-signifier">Change</span>
+                </button>
+                {correctedLocation && <span className="chip location-pick">Your pick</span>}
+                {shownLocation.location ? (
                   <>
-                    <span className="value">{location.location}</span>
                     {/* OpenStreetMap's licence asks for this credit wherever its data is shown. */}
                     <a
                       className="source"
@@ -70,6 +87,8 @@ export function Result() {
                       <ExternalIcon />
                     </a>
                   </>
+                ) : correctedLocation ? (
+                  <span className="small">FixFinder saved the pin you chose.</span>
                 ) : (
                   <span className="small">
                     FixFinder couldn't put this location into words. It still uses where your phone was to find who
@@ -84,6 +103,9 @@ export function Result() {
             <div className="stack grow">
               <span className="field-name">Responsible party</span>
               <span className="value">{result.responsibleParty}</span>
+              {correctedLocation && (
+                <span className="small">FixFinder used its original location for this lookup.</span>
+              )}
               <a className="source" href={result.source.url} target="_blank" rel="noopener noreferrer">
                 Source: {result.source.name}
                 <ExternalIcon />
@@ -97,6 +119,16 @@ export function Result() {
           Done
         </button>
       </div>
+      {editingLocation && shownLocation && (
+        <ChangeLocation
+          location={shownLocation}
+          onCancel={() => navigate(-1)}
+          onConfirm={(found) => {
+            setCorrectedLocation(found);
+            navigate(-1);
+          }}
+        />
+      )}
     </main>
   );
 }

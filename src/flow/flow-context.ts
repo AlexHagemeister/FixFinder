@@ -17,6 +17,8 @@ export interface FlowState {
   steps: Record<StepId, StepStatus>;
   /** What the location step found: the location to show, and the location detail for the lookup. */
   location: FoundLocation | null;
+  /** The location the user confirmed on the map. The original location remains associated with the lookup. */
+  correctedLocation?: FoundLocation;
   result: LookupResponse | null;
   /** A short message for Home when a run stopped early, such as when the location could not be found. */
   notice: string | null;
@@ -36,6 +38,7 @@ export interface FlowActions {
    * It saves the photo and reloads the page, since Safari keeps a denial for the life of the page.
    */
   askAgain: () => void;
+  setCorrectedLocation: (location: FoundLocation) => void;
 }
 
 export type FlowValue = FlowState & FlowActions;

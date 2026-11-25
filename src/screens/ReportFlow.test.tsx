@@ -8,6 +8,33 @@ import { reverseGeocode, type ReverseGeocode } from "../location/nominatim.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import { routes } from "../routes.tsx";
 
+const mapEvents = vi.hoisted(() => ({
+  moveEnd: () => {},
+  tilesLoaded: () => {},
+}));
+vi.mock("leaflet", () => ({
+  latLng: vi.fn(),
+  map: () => ({
+    setView() { return this; },
+    on(event: string, callback: () => void) {
+      if (event === "moveend") mapEvents.moveEnd = callback;
+    },
+    getCenter: () => ({ wrap: () => ({ lat: 37.87, lng: -122.27, distanceTo: () => 100 }) }),
+    remove: vi.fn(),
+  }),
+  tileLayer: () => {
+    const listeners = new Map<string, () => void>();
+    mapEvents.tilesLoaded = () => {
+      listeners.get("tileload")?.();
+      listeners.get("load")?.();
+    };
+    return {
+      on: (event: string, callback: () => void) => listeners.set(event, callback),
+      addTo: vi.fn(),
+    };
+  },
+}));
+
 // The real lookup waits on purpose, and the step pacing holds each step on screen. Neither belongs in a test.
 vi.mock("../lookup/lookup.ts", () => ({ lookup: vi.fn() }));
 vi.mock("../flow/timing.ts", () => ({ STEP_MIN_MS: 0, FINISH_PAUSE_MS: 0 }));
@@ -131,6 +158,47 @@ afterEach(() => {
 });
 
 describe("Report flow", () => {
+  it("keeps the old location on Back and names a confirmed pin without rerunning the lookup", async () => {
+    // jsdom exposes the dialog element without implementing its modal methods.
+    Object.defineProperties(HTMLDialogElement.prototype, {
+      showModal: { configurable: true, value(this: HTMLDialogElement) { this.open = true; } },
+      close: { configurable: true, value(this: HTMLDialogElement) { this.open = false; } },
+    });
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    geo.allow();
+    const edit = await screen.findByRole("button", { name: "Change location" });
+
+    fireEvent.click(edit);
+    await screen.findByRole("dialog", { name: "Change location" });
+    act(() => {
+      mapEvents.tilesLoaded();
+      mapEvents.moveEnd();
+    });
+    expect(reverseGeocode).toHaveBeenCalledTimes(1);
+    await act(async () => { await router.navigate(-1); });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("2160 Shattuck Avenue, Berkeley")).toBeInTheDocument();
+
+    vi.mocked(reverseGeocode).mockResolvedValueOnce({
+      ...SHATTUCK,
+      address: { house_number: "2000", road: "Oxford Street", city: "Berkeley" },
+    });
+    fireEvent.click(edit);
+    await screen.findByRole("dialog", { name: "Change location" });
+    act(() => {
+      mapEvents.tilesLoaded();
+      mapEvents.moveEnd();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Use this location" }));
+    expect(await screen.findByText("Your pick")).toBeInTheDocument();
+    expect(screen.getByText("2000 Oxford Street, Berkeley")).toBeInTheDocument();
+    expect(reverseGeocode).toHaveBeenLastCalledWith(37.87, -122.27);
+    expect(lookup).toHaveBeenCalledTimes(1);
+  });
+
   it("goes from Home to Working to Result, with the photo, category, responsible party, and source", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");

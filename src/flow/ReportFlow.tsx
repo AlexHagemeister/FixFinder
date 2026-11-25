@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { phoneWillNotAskAgain } from "../location/permission.ts";
-import { findLocation } from "../location/location-detail.ts";
+import { findLocation, type FoundLocation } from "../location/location-detail.ts";
 import { getPosition, PositionError, type Position } from "../location/position.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import { FlowContext, type FlowState, type FlowValue, type StepId, type StepStatus } from "./flow-context.ts";
@@ -254,7 +254,13 @@ export function ReportFlow() {
     })();
   }, [photo, phoneWillNotAsk, navigate, runSteps]);
 
-  const value = useMemo<FlowValue>(() => ({ ...state, startReport, askAgain }), [state, startReport, askAgain]);
+  const setCorrectedLocation = useCallback((location: FoundLocation) => {
+    setState((current) => ({ ...current, correctedLocation: location }));
+  }, []);
+  const value = useMemo<FlowValue>(
+    () => ({ ...state, startReport, askAgain, setCorrectedLocation }),
+    [state, startReport, askAgain, setCorrectedLocation],
+  );
 
   return (
     <FlowContext value={value}>
