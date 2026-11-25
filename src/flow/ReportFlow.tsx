@@ -3,8 +3,16 @@ import { Outlet, useLocation, useNavigate } from "react-router";
 import { phoneWillNotAskAgain } from "../location/permission.ts";
 import { findLocation } from "../location/location-detail.ts";
 import { getPosition, PositionError, type Position } from "../location/position.ts";
+import { describePhoto } from "../lookup/describe-photo.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
-import { FlowContext, type FlowState, type FlowValue, type StepId, type StepStatus } from "./flow-context.ts";
+import {
+  FlowContext,
+  type FlowState,
+  type FlowValue,
+  type PhotoDescription,
+  type StepId,
+  type StepStatus,
+} from "./flow-context.ts";
 import { NOTICES } from "./notices.ts";
 import { reloadPage } from "./reload.ts";
 import { clearPhoto, loadPhoto, SAVED_PHOTO_MAX_AGE_MS, savePhoto } from "./saved-photo.ts";
@@ -25,10 +33,14 @@ const EMPTY: FlowState = {
   photo: null,
   steps: ALL_WAITING,
   location: null,
+  description: null,
   result: null,
   notice: null,
   locationNeeded: null,
 };
+
+/** Where a run starts: a new report reads the photo, and a report picked back up already has its description. */
+type RunStart = { from: "photo" } | { from: "location"; description: PhotoDescription };
 
 const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -83,13 +95,11 @@ export function ReportFlow() {
   }, [restoreTarget, pathname]);
 
   // Runs the report's steps for `file`. A new report starts at the photo step. Ask again starts at the location step,
-  // so the photo step stays done and the same photo goes to the lookup.
+  // so the photo step stays done, its description is kept, and the same photo goes to the lookup.
   const runSteps = useCallback(
-    (file: File, from: "photo" | "location") => {
+    (file: File, start: RunStart) => {
       const run = ++runRef.current;
       const isLatest = () => runRef.current === run;
-      const setSteps = (steps: Partial<Record<StepId, StepStatus>>) =>
-        setState((current) => ({ ...current, steps: { ...current.steps, ...steps } }));
       const stop = (notice: string) => {
         if (!isLatest()) return;
         setState((current) => ({ ...current, notice }));
@@ -97,12 +107,22 @@ export function ReportFlow() {
       };
 
       void (async () => {
-        if (from === "photo") {
+        let description: PhotoDescription;
+        if (start.from === "photo") {
           // Step 1: reading the photo. Some phones leave the file's kind blank, so only a known non-photo stops here.
           if (file.type && !file.type.startsWith("image/")) return stop(NOTICES.notAPhoto);
-          await pause(STEP_MIN_MS);
+          const [reading] = await Promise.all([describePhoto(file), pause(STEP_MIN_MS)]);
           if (!isLatest()) return;
-          setSteps({ photo: "done", location: "current" });
+          if (reading.outcome === "unclear") return stop(NOTICES.photoUnclear);
+          if (reading.outcome === "unreachable") return stop(NOTICES.photoReaderUnreachable);
+          description = { text: reading.description, sample: reading.sample };
+          setState((current) => ({
+            ...current,
+            description,
+            steps: { ...current.steps, photo: "done", location: "current" },
+          }));
+        } else {
+          description = start.description;
         }
 
         // Step 2: pinning down the location. A failure also waits out the step's pause, so after Ask again the
@@ -124,9 +144,9 @@ export function ReportFlow() {
           // is saved on the phone too, in case the phone closes FixFinder while the user is in the Settings app.
           const phoneWillNotAsk = await phoneWillNotAskAgain(outcome.answeredInMs);
           if (!isLatest()) return;
-          void savePhoto(file, { phoneWillNotAsk, resumeAtLocation: false });
+          void savePhoto(file, { phoneWillNotAsk, resumeAtLocation: false, description });
           // A denial that answers Ask again says so on screen, so the tap visibly did something (Nielsen 1).
-          const stillOff = from === "location";
+          const stillOff = start.from === "location";
           setState((current) => ({ ...current, locationNeeded: { phoneWillNotAsk, stillOff } }));
           // Replace, so the back gesture from Location needed goes to Home.
           navigate("/location-needed", { replace: true });
@@ -186,12 +206,13 @@ export function ReportFlow() {
         photo: holdPhoto(file),
         steps: { ...ALL_WAITING, photo: "current" },
         location: null,
+        description: null,
         result: null,
         notice: null,
         locationNeeded: null,
       });
       navigate("/working");
-      runSteps(file, "photo");
+      runSteps(file, { from: "photo" });
     },
     [navigate, holdPhoto, runSteps],
   );
@@ -209,23 +230,24 @@ export function ReportFlow() {
         setRestoreTarget(null);
         return;
       }
-      const { photo: file, phoneWillNotAsk, resumeAtLocation } = saved;
+      const { photo: file, phoneWillNotAsk, resumeAtLocation, description } = saved;
       // Location needed stays set until the location step works, so that screen never sends the user Home on the way.
       setState({
         photo: holdPhoto(file),
         steps: AT_LOCATION,
         location: null,
+        description,
         result: null,
         notice: null,
         locationNeeded: { phoneWillNotAsk, stillOff: false },
       });
       if (resumeAtLocation) {
         // The resume is used up. If the page loads again before the step ends, it opens Location needed instead.
-        void savePhoto(file, { phoneWillNotAsk, resumeAtLocation: false });
+        void savePhoto(file, { phoneWillNotAsk, resumeAtLocation: false, description });
         setRestoreTarget("/working");
         // Replace, so the back gesture from Working goes to Home and not to the Location needed screen.
         navigate("/working", { replace: true });
-        runSteps(file, "location");
+        runSteps(file, { from: "location", description });
       } else {
         setRestoreTarget("/location-needed");
         navigate("/location-needed", { replace: true });
@@ -234,14 +256,15 @@ export function ReportFlow() {
   }, [navigate, holdPhoto, runSteps]);
 
   const photo = state.photo;
+  const description = state.description;
   const phoneWillNotAsk = state.locationNeeded?.phoneWillNotAsk ?? false;
   const askAgain = useCallback(() => {
-    if (!photo || askingRef.current) return;
+    if (!photo || !description || askingRef.current) return;
     askingRef.current = true;
     void (async () => {
       // Safari keeps a denial for the life of the page, so the ask happens after a reload. The saved photo carries
       // the report across it, and app start runs the location step.
-      if (await savePhoto(photo.file, { phoneWillNotAsk, resumeAtLocation: true })) {
+      if (await savePhoto(photo.file, { phoneWillNotAsk, resumeAtLocation: true, description })) {
         reloadPage();
         return;
       }
@@ -250,9 +273,9 @@ export function ReportFlow() {
       setState((current) => ({ ...current, steps: AT_LOCATION, location: null, result: null }));
       // Replace, so the back gesture from Working goes to Home and not to the Location needed screen.
       navigate("/working", { replace: true });
-      runSteps(photo.file, "location");
+      runSteps(photo.file, { from: "location", description });
     })();
-  }, [photo, phoneWillNotAsk, navigate, runSteps]);
+  }, [photo, description, phoneWillNotAsk, navigate, runSteps]);
 
   const value = useMemo<FlowValue>(() => ({ ...state, startReport, askAgain }), [state, startReport, askAgain]);
 

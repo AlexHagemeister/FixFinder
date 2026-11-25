@@ -63,7 +63,9 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 **Where it lives.** Cloudflare hosts those files on its free plan. Nobody on the team pays anything for hosting.
 
-**Where the AI runs.** Real AI calls run only on Cloudflare, in the Worker script in `worker/`, which answers the app's `/api/...` requests. The Worker holds the OpenRouter key, and every model call it makes goes through `worker/model-calls.ts`. That file records each call's operation, model, tokens, and cost in a Cloudflare database (D1). A test fails if any other file reaches OpenRouter, so no call goes unrecorded. The database's tables are defined in `migrations/`. After adding a migration there, apply it with `bunx wrangler d1 migrations apply fixfinder-model-calls --remote`. On your own machine, `bun run dev` sends `/api/...` requests to the live Worker, so you never need a key. To try a change to the Worker code itself, push the branch and use its preview link.
+**Where the AI runs.** Real AI calls run only on Cloudflare, in the Worker script in `worker/`, which answers the app's `/api/...` requests. The Worker holds the OpenRouter key, and every model call it makes goes through `worker/model-calls.ts`. That file records each call's operation, model, tokens, and cost in a Cloudflare database (D1). A test fails if any other file reaches OpenRouter, so no call goes unrecorded. The database's tables are defined in `migrations/`. After adding a migration there, apply it with `bunx wrangler d1 migrations apply fixfinder-model-calls --remote`. On your own machine, `bun run dev` sends `/api/...` requests to the live Worker, so you never need a key. To try a change to the Worker code itself, push the branch and use its preview link, or run the app locally against it with `FIXFINDER_API_TARGET=https://<branch-preview-link> bun run dev:real-ai`.
+
+**Which AI steps there are.** Each AI step is a Worker route, and each can use its own model, set in `worker/models.ts`. Reading the photo (`POST /api/describe-photo`, in `worker/describe-photo.ts`) suggests a short description of the problem, like "Overflowing trash can", or says it couldn't tell. The route is open to the internet, so it guards the budget before every call: it refuses a photo over 2 MB, more than 20 calls a minute, and any call once the day's recorded spend (UTC) reaches $0.50. The app shrinks each photo to 1024 pixels on its long side before sending it.
 
 **What happens when you push a branch.** Cloudflare builds the branch and puts it at its own preview link, so you can try your change on a phone before anyone merges it. The link is the branch name with slashes turned into dashes, then `-fixfinder.alexhagemeister.workers.dev`. For example, the branch `issue-1/phone-app-shell` lives at `issue-1-phone-app-shell-fixfinder.alexhagemeister.workers.dev`.
 
@@ -82,6 +84,10 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 ## AI usage
 
 Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Real AI calls spend the team's shared course budget, so make them on purpose and keep an eye on spend with `bun run model-calls`.
+
+**Stand-in or real.** `bun run dev` uses the stand-in photo reader: every photo gets the description "Pothole", nothing is sent, and Result's placeholder note says the description is sample output. The live app and every branch preview always use the real photo reader. To use it on your machine, run `bun run dev:real-ai` (it opens at http://localhost:5174). The tests never make real calls.
+
+**When you need the real thing.** Use the stand-in for screens, flows, wording, and layout. Use the real photo reader only when the change is about what it says: its instructions or model in `worker/`, how the app handles its answers, or checking it on real photos. A page that retries in a loop can spend the day's cap in minutes.
 
 Every model call is recorded with what it cost. `bun run model-calls` saves the records to `model-calls.json` (not committed) and prints total spend, the most expensive operation, and the spend for each operation. Agents can search that file, for example with `jq`. The same records are at https://fixfinder.alexhagemeister.workers.dev/api/model-calls.
 

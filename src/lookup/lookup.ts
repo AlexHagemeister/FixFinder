@@ -1,7 +1,8 @@
-// The lookup: from a photo and where the user is standing, find the problem's category and its responsible party.
+// The lookup: from a photo and where the user is standing, find the problem's responsible party.
 //
-// This is a stand-in. It has the shape of the future Supabase Edge Function, so the round trip later replaces the
-// body of `lookup` with a `fetch` to that function and no screen changes. It makes no network or AI calls.
+// This is a stand-in. It has the shape of a future Worker route (see README § Where the AI runs), so the real lookup
+// later replaces the body of `lookup` with a `fetch` and no screen changes. It makes no network or AI calls. The
+// description comes from the photo reader (describe-photo.ts), not from here.
 
 import type { LocationDetail } from "../location/location-detail.ts";
 
@@ -22,14 +23,10 @@ export interface LookupSource {
 
 /** What the lookup sends back. */
 export interface LookupResponse {
-  /** The kind of problem, like "Pothole". */
-  category: string;
-  /** One or two plain sentences about the problem. */
-  description: string;
   /** The responsible party by its public name, like "Berkeley Public Works". */
   responsibleParty: string;
   source: LookupSource;
-  /** True when the answer is sample output and not a real reading of the photo. The Result screen says so. */
+  /** True when the answer is sample output and not a real lookup. The Result screen says so. */
   placeholder: boolean;
 }
 
@@ -37,8 +34,6 @@ export interface LookupResponse {
 export const PLACEHOLDER_DELAY_MS = 1200;
 
 const PLACEHOLDER_RESPONSE: LookupResponse = {
-  category: "Pothole",
-  description: "A hole in the road surface, deep enough to damage a tire or throw a cyclist.",
   responsibleParty: "Berkeley Public Works",
   source: {
     name: "City of Berkeley, Street Repair page",

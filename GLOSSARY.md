@@ -99,7 +99,15 @@ The screen FixFinder shows when the user denies location. It says FixFinder need
 The screen that shows what FixFinder found: the user's photo, the description, the location, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
 
 **Placeholder result**:
-The chip and note on Result that say everything on it except the location is sample output, shown while FixFinder does not read photos yet.
+The chip and note on Result that name what on it is sample output: the responsible party and source, while FixFinder does not look them up yet, and the description too when it came from the stand-in.
+
+**Photo reader**:
+The AI step that reads the photo and suggests the description, or says it couldn't tell what the problem is. It runs in the Worker (`POST /api/describe-photo`). "Can't reach the photo reader" covers no connection, no answer in time, and the photo reader refusing a call to protect the budget.
+_Avoid_: classifier, vision model, image AI
+
+**Stand-in**:
+A part of FixFinder that answers with made-up but realistic output instead of doing the real work, so the team can build without spending the AI budget. `bun run dev` uses the stand-in photo reader, and the lookup is a stand-in for now.
+_Avoid_: mock (that means a test double), fake, dummy
 
 **Notice**:
 A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, or Location needed's line when location is still off after Ask again.

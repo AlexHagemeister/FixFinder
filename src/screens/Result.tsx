@@ -3,12 +3,13 @@ import { Navigate, useNavigate } from "react-router";
 import { useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon, BuildingIcon, ExternalIcon, PinIcon, TagIcon } from "../icons.tsx";
 import { PhotoInput } from "./PhotoInput.tsx";
+import { PlaceholderNote } from "./PlaceholderNote.tsx";
 
-// Result: shows what FixFinder found, with the photo, the category, the location, the responsible party, and its source.
+// Result: shows what FixFinder found, with the photo, the description, the location, the responsible party, and its source.
 // Layout and wording follow the prototype's review screen. Its Change controls and draft button are left out:
 // correcting the guess and drafting the report are not part of #1, and a control that does nothing is a false signifier.
 export function Result() {
-  const { photo, location, result, startReport } = useReportFlow();
+  const { photo, location, description, result, startReport } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
 
@@ -16,7 +17,7 @@ export function Result() {
   if (!photo) return <Navigate to="/" replace />;
   // A photo with no result is Retake photo starting a new report, on its way to Working. Sending the user Home here
   // would end that report, so the screen stays blank for the moment it takes.
-  if (!result) return null;
+  if (!result || !description) return null;
 
   return (
     <main className="screen">
@@ -34,21 +35,21 @@ export function Result() {
           <img className="thumb large" src={photo.url} alt="Your photo" />
           <h1 className="h-l">Here is what FixFinder found</h1>
         </div>
-        {result.placeholder && (
-          <div className="card pad stack placeholder-note" role="note" aria-label="Placeholder result">
-            <span className="chip">Placeholder result</span>
-            <span className="small">
-              FixFinder does not read photos yet. Everything here except the location is sample output, the same for every photo.
-            </span>
-          </div>
+        {/* The note names exactly what is sample output, so a real description is not doubted along with it. The
+            description is sample output only in a local build that uses the stand-in photo reader. */}
+        {(result.placeholder || description.sample) && (
+          <PlaceholderNote label="Placeholder result">
+            {description.sample
+              ? "This build does not read photos, so the description is sample output. The responsible party and source are sample output too, the same for every photo."
+              : "FixFinder does not look up who is responsible yet. The responsible party and source are sample output, the same for every photo."}
+          </PlaceholderNote>
         )}
         <div className="card rows">
           <div className="row">
             <TagIcon />
             <div className="stack grow">
-              <span className="field-name">Category</span>
-              <span className="value">{result.category}</span>
-              <span className="small">{result.description}</span>
+              <span className="field-name">Description</span>
+              <span className="value">{description.text}</span>
             </div>
           </div>
           {location && (

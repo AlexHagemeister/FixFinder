@@ -36,8 +36,14 @@ export default defineConfig({
   ],
   server: {
     // Real AI calls run only in the deployed Worker, which holds the OpenRouter key and records every call (issue
-    // #12). Locally, /api requests go to the live Worker, so nobody needs a key to run the app.
-    proxy: { "/api": { target: "https://fixfinder.alexhagemeister.workers.dev", changeOrigin: true } },
+    // #12). Locally, /api requests go to the live Worker, so nobody needs a key to run the app. FIXFINDER_API_TARGET
+    // points them at a branch preview instead, to try a Worker route that has not merged yet.
+    proxy: {
+      "/api": {
+        target: process.env.FIXFINDER_API_TARGET || "https://fixfinder.alexhagemeister.workers.dev",
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     environment: "jsdom",

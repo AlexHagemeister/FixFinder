@@ -8,6 +8,13 @@ export const STEP_ORDER: readonly StepId[] = ["photo", "location", "responsibleP
 
 export type StepStatus = "waiting" | "current" | "done";
 
+/** The description FixFinder suggests from the photo, like "Overflowing trash can". */
+export interface PhotoDescription {
+  text: string;
+  /** True when it came from the stand-in (`bun run dev`), not from reading this photo. Result says so. */
+  sample: boolean;
+}
+
 export interface FlowState {
   /**
    * The photo for the report in progress, held in memory. `url` is an object URL for showing it. While the Location
@@ -17,6 +24,8 @@ export interface FlowState {
   steps: Record<StepId, StepStatus>;
   /** What the location step found: the location to show, and the location detail for the lookup. */
   location: FoundLocation | null;
+  /** What the photo step found. */
+  description: PhotoDescription | null;
   result: LookupResponse | null;
   /** A short message for Home when a run stopped early, such as when the location could not be found. */
   notice: string | null;

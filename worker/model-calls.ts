@@ -2,7 +2,7 @@
 // each call the model makes, whether through generateText, streamText, or one step of a tool loop, leaves a record of
 // what it was for and what it cost. No other file may import the OpenRouter provider: src/one-model-path.test.ts checks.
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createOpenRouter, type OpenRouterChatSettings } from "@openrouter/ai-sdk-provider";
 import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from "ai";
 
 /** One model call, as the record keeps it. No photos, prompts, or answers. */
@@ -24,11 +24,19 @@ export interface ModelCallsEnv {
   MODEL_CALLS_DB: D1Database;
 }
 
+/** OpenRouter's settings for a model, such as how much it reasons. worker/models.ts names them for each step. */
+export type ModelSettings = Omit<OpenRouterChatSettings, "usage">;
+
 /** An OpenRouter model whose every call is recorded under `operation`. */
-export function openRouterModel(env: ModelCallsEnv, operation: string, modelId: string): LanguageModel {
+export function openRouterModel(
+  env: ModelCallsEnv,
+  operation: string,
+  modelId: string,
+  settings: ModelSettings = {},
+): LanguageModel {
   const openrouter = createOpenRouter({ apiKey: env.OPENROUTER_API_KEY });
   // usage.include asks OpenRouter to report each call's cost in its answer, so no second request is needed.
-  return recordedModel(openrouter(modelId, { usage: { include: true } }), operation, (record) =>
+  return recordedModel(openrouter(modelId, { ...settings, usage: { include: true } }), operation, (record) =>
     saveModelCall(env.MODEL_CALLS_DB, record),
   );
 }

@@ -7,6 +7,8 @@
 // Every function here settles and never throws. If IndexedDB is missing or fails (private mode, a full disk), saving
 // reports false and loading finds nothing, so the report falls back to living in memory only. Tests replace this module.
 
+import type { PhotoDescription } from "./flow-context.ts";
+
 /** A saved record older than this is thrown away, so a photo never sits on the phone longer than a short detour. */
 export const SAVED_PHOTO_MAX_AGE_MS = 15 * 60_000;
 
@@ -21,6 +23,8 @@ export interface SavedPhoto {
   phoneWillNotAsk: boolean;
   /** True when Ask again wrote the record just before reloading, so app start runs the location step. */
   resumeAtLocation: boolean;
+  /** What the photo step found, so picking the report back up does not read (and pay for) the photo again. */
+  description: PhotoDescription;
 }
 
 /** The record as stored. The photo goes in as a Blob with its name kept beside it, and comes back out as a File. */
@@ -32,6 +36,7 @@ interface StoredRecord {
   savedAt: number;
   phoneWillNotAsk: boolean;
   resumeAtLocation: boolean;
+  description: PhotoDescription;
 }
 
 const DB_NAME = "fixfinder";
@@ -88,7 +93,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /** Saves the photo and what app start needs to pick the report back up. Resolves true once it is on the phone. */
 export async function savePhoto(
   photo: File,
-  options: { phoneWillNotAsk: boolean; resumeAtLocation: boolean },
+  options: { phoneWillNotAsk: boolean; resumeAtLocation: boolean; description: PhotoDescription },
 ): Promise<boolean> {
   try {
     const record: StoredRecord = {
@@ -114,13 +119,15 @@ export async function loadPhoto(): Promise<SavedPhoto | null> {
       run<StoredRecord | undefined>("readonly", (store) => store.get(KEY)),
       SAVED_PHOTO_READ_TIMEOUT_MS,
     );
-    if (!record || !(record.blob instanceof Blob)) return null;
+    // A record from before the photo step kept its description cannot pick the report up. Records live 15 minutes.
+    if (!record || !(record.blob instanceof Blob) || !record.description) return null;
     const photo = new File([record.blob], record.name, { type: record.type, lastModified: record.lastModified });
     return {
       photo,
       savedAt: record.savedAt,
       phoneWillNotAsk: record.phoneWillNotAsk,
       resumeAtLocation: record.resumeAtLocation,
+      description: record.description,
     };
   } catch {
     return null;

@@ -19,8 +19,11 @@
       "database_id": "9ee75724-b668-4c84-ae42-b936abdbc05a"
     }
   ],
+  // The photo reader's per-minute limit (issue #25), counted across everyone, in each Cloudflare location. The live
+  // app and branch previews share one counter, as they share one OpenRouter key.
+  "ratelimits": [{ "name": "DESCRIBE_PHOTO_LIMITER", "namespace_id": "2501", "simple": { "limit": 20, "period": 60 } }],
   // Branch builds run `wrangler preview`. Previews do not inherit the settings above, so the database is bound here
-  // too: preview calls cost real money and go in the same record as live ones. The OpenRouter key is a secret, set
+  // too, with the rate limit: preview calls cost real money and go in the same record as live ones. The OpenRouter key is a secret, set
   // with commands, never here (README § Keys and secrets).
   "previews": {
     "d1_databases": [
@@ -29,6 +32,7 @@
         "database_name": "fixfinder-model-calls",
         "database_id": "9ee75724-b668-4c84-ae42-b936abdbc05a"
       }
-    ]
+    ],
+    "ratelimits": [{ "name": "DESCRIBE_PHOTO_LIMITER", "namespace_id": "2501", "simple": { "limit": 20, "period": 60 } }]
   }
 }

@@ -6,7 +6,7 @@ import { CheckIcon } from "../icons.tsx";
 // Steps and wording follow the core-app prototype, minus "Drafting the report", which #1 leaves out.
 
 const STEP_COPY: Record<StepId, { title: string; current: string; done: string }> = {
-  photo: { title: "Reading the photo", current: "Getting your photo ready", done: "Photo ready" },
+  photo: { title: "Reading the photo", current: "Looking at what the photo shows", done: "Photo read" },
   location: { title: "Pinning down the location", current: "Getting your location", done: "Location found" },
   responsibleParty: { title: "Finding who is responsible", current: "Checking who maintains this location", done: "" },
 };
@@ -23,7 +23,7 @@ function StepMark({ status }: { status: StepStatus }) {
 }
 
 export function Working() {
-  const { photo, steps, location, result } = useReportFlow();
+  const { photo, steps, location, description, result } = useReportFlow();
   const navigate = useNavigate();
 
   // A reload or a direct visit has no photo in memory, so there is nothing to work on.
@@ -57,14 +57,14 @@ export function Working() {
           {STEP_ORDER.map((id) => {
             const status = steps[id];
             const copy = STEP_COPY[id];
-            // A finished step shows what it found, where it found something (Nielsen 1): the location in words, and
-            // the responsible party. A location FixFinder could not name keeps the plain "Location found".
+            // A finished step shows what it found (Nielsen 1): the description, the location in words, and the
+            // responsible party. A location FixFinder could not name keeps the plain "Location found".
             const doneDetail =
               id === "responsibleParty"
                 ? (result?.responsibleParty ?? "")
                 : id === "location"
                   ? (location?.location ?? copy.done)
-                  : copy.done;
+                  : (description?.text ?? copy.done);
             const detail = status === "done" ? doneDetail : status === "current" ? copy.current : "Waiting";
             return (
               <li key={id} className={`step ${status}`}>
