@@ -95,11 +95,13 @@ export function Working() {
                   : status === "failed" && photoProblem
                     ? PHOTO_PROBLEM_COPY[photoProblem].detail
                     : "Waiting";
+            // FixFinder did not read the photo when the user described it, so the step says who did (invariant 7).
+            const title = id === "photo" && description?.byUser ? "Described by you" : copy.title;
             return (
               <li key={id} className={`step ${status}`}>
                 <StepMark status={status} />
                 <div className="stack">
-                  <span className="step-title">{copy.title}</span>
+                  <span className="step-title">{title}</span>
                   <span className="small">{detail}</span>
                 </div>
               </li>

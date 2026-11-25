@@ -294,7 +294,7 @@ export function ReportFlow() {
   const describeItYourself = useCallback(
     (text: string) => {
       if (!photo) return;
-      const own: PhotoDescription = { text, sample: false };
+      const own: PhotoDescription = { text, sample: false, byUser: true };
       setState((current) => ({ ...current, description: own, photoProblem: null, steps: AT_LOCATION }));
       // Replace, so the back gesture from Working goes to Home and not back to Describe it yourself.
       navigate("/working", { replace: true });

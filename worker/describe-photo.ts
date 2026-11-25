@@ -19,8 +19,14 @@ export type DescribePhotoAnswer = { outcome: "described"; description: string } 
 
 export const OPERATION = "describePhoto";
 
-/** The app shrinks photos well below this before sending, so a bigger body is not the app. */
-export const MAX_PHOTO_BYTES = 2_000_000;
+/**
+ * The app shrinks photos well below this before sending. When the browser cannot shrink one, the app sends it as it
+ * is, so this leaves room for a full-size phone photo while still refusing anything far bigger.
+ */
+export const MAX_PHOTO_BYTES = 10_000_000;
+
+/** The photo formats the model reads (OpenRouter's image inputs). A HEIC photo the browser could not shrink is not one. */
+export const READABLE_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 /** Once today's recorded spend (UTC) reaches this, the photo reader stops until midnight UTC. In US dollars. */
 export const DAILY_SPEND_CAP_USD = 0.5;
@@ -44,7 +50,14 @@ const answerSchema = z.object({
 });
 
 // Words that mean the model is talking about itself or the photo instead of naming a problem (criterion 6 on #25).
-const NOT_A_DESCRIPTION = /\b(sorry|apolog\w*|unable|cannot|can't|can not|unclear|not sure|i|i'm|i am|image|photo|picture)\b/i;
+// They are phrases, not bare words, so a real description that happens to use one ("Pothole on I-80", "Unclear lane
+// markings", "Broken photo radar sign") still gets through.
+const SELF_TALK =
+  /\b(sorry|apolog\w*|unable|cannot|can't|can not|could not|couldn't|not sure|hard to (say|tell)|to tell|identify|(the|this) (photo|image|picture))\b|(^|\s)i('m|’m|\s+(am|see|think|can|cannot|can't|could|do|don't|was|would|notice))\b/i;
+
+// Answers that say there is nothing to name: "None", "N/A", "Nothing looks broken", "No problem visible".
+const NON_ANSWER =
+  /^(none|nothing|unknown|unclear|blurry|n\/?a|not sure)$|^nothing\b|^too (dark|blurry)\b|\bno (visible |obvious |clear )?(problems?|issues?|damage|hazards?)\b/i;
 
 /**
  * The description to show, cleaned up, or null when the model's text is not a short description of a problem. Its
@@ -60,7 +73,7 @@ export function cleanDescription(text: string): string | null {
   if (!cleaned) return null;
   if (cleaned.length > MAX_DESCRIPTION_CHARS) return null;
   if (cleaned.split(" ").length > MAX_DESCRIPTION_WORDS) return null;
-  if (/[?:;]/.test(cleaned) || NOT_A_DESCRIPTION.test(cleaned)) return null;
+  if (/[?:;]/.test(cleaned) || SELF_TALK.test(cleaned) || NON_ANSWER.test(cleaned)) return null;
   return cleaned[0]!.toUpperCase() + cleaned.slice(1);
 }
 
@@ -92,9 +105,11 @@ export async function spendTodayUsd(db: D1Database, now = new Date()): Promise<n
 const refuse = (status: number, reason: string) => Response.json({ error: reason }, { status });
 
 export async function handleDescribePhoto(request: Request, env: DescribePhotoEnv): Promise<Response> {
-  // Some phones send a photo with no type, so only a known non-image is refused.
+  // Some phones send a photo with no type, which is taken as a JPEG. Any type the model cannot read is refused.
   const mediaType = request.headers.get("Content-Type") || "image/jpeg";
-  if (!mediaType.startsWith("image/")) return refuse(415, "Send a photo.");
+  if (!READABLE_PHOTO_TYPES.includes(mediaType.split(";")[0]!.trim().toLowerCase())) {
+    return refuse(415, "Send a JPEG, PNG, WebP, or GIF photo.");
+  }
   const declared = Number(request.headers.get("Content-Length") ?? 0);
   if (declared > MAX_PHOTO_BYTES) return refuse(413, "That photo is too big.");
 

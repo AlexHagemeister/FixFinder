@@ -10,7 +10,7 @@ import { shrinkPhoto } from "./shrink-photo.ts";
 export type PhotoReading =
   /** A description FixFinder made from the photo. `sample` is true when it came from the stand-in, not the photo. */
   | { outcome: "described"; description: string; sample: boolean }
-  /** The photo reader looked and could not tell what the problem is. */
+  /** The photo reader looked and could not tell what the problem is, or the photo is one it cannot read. */
   | { outcome: "unclear" }
   /** The photo reader could not be reached: no connection, no answer in time, or it is switched off for now. */
   | { outcome: "unreachable" };
@@ -36,6 +36,9 @@ export async function describePhoto(photo: Blob): Promise<PhotoReading> {
       body: shrunk,
       signal: AbortSignal.timeout(PHOTO_READER_TIMEOUT_MS),
     });
+    // Too big, or a format the model cannot read: the same photo would fail again, so Try again cannot help. Retake
+    // photo and Describe it yourself can.
+    if (response.status === 413 || response.status === 415) return { outcome: "unclear" };
     if (!response.ok) return { outcome: "unreachable" };
     const answer = (await response.json()) as { outcome?: unknown; description?: unknown };
     if (answer.outcome === "described" && typeof answer.description === "string" && answer.description) {

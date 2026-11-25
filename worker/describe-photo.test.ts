@@ -33,6 +33,12 @@ describe("cleanDescription", () => {
     ["overflowing trash can.", "Overflowing trash can"],
     ['  "Graffiti on bus shelter"  ', "Graffiti on bus shelter"],
     ["Broken\nstreetlight", "Broken streetlight"],
+    // Real descriptions that use a word the filter watches for.
+    ["Pothole on I-80", "Pothole on I-80"],
+    ["Unclear lane markings", "Unclear lane markings"],
+    ["Broken photo radar sign", "Broken photo radar sign"],
+    ["Damaged picture frame on mural", "Damaged picture frame on mural"],
+    ["No parking sign knocked over", "No parking sign knocked over"],
   ])("keeps a short description: %j", (text, expected) => {
     expect(cleanDescription(text)).toBe(expected);
   });
@@ -47,6 +53,18 @@ describe("cleanDescription", () => {
     "This photo shows a street with a car parked next to a curb and some trees",
     "Is that a pothole?",
     "Description: pothole",
+    // Answers that say there is nothing to name.
+    "No problem visible",
+    "Nothing looks broken",
+    "Too dark to tell",
+    "Could not identify a problem",
+    "None",
+    "N/A",
+    "No issue found",
+    "Hard to say",
+    "Blurry",
+    "Unknown",
+    "I see a car",
     "x".repeat(61),
   ])("refuses the model's own words or a long answer: %j", (text) => {
     expect(cleanDescription(text)).toBeNull();
@@ -115,6 +133,11 @@ describe("handleDescribePhoto", () => {
   // None of these reach the model: each is refused before the call, so nothing is spent.
   it("refuses a file that is not a photo", async () => {
     const response = await handleDescribePhoto(photoRequest("hello", { "Content-Type": "text/plain" }), env());
+    expect(response.status).toBe(415);
+  });
+
+  it("refuses a photo the model cannot read, such as HEIC", async () => {
+    const response = await handleDescribePhoto(photoRequest("heic bytes", { "Content-Type": "image/heic" }), env());
     expect(response.status).toBe(415);
   });
 

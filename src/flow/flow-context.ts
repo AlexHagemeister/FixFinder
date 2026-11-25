@@ -16,6 +16,8 @@ export interface PhotoDescription {
   text: string;
   /** True when it came from the stand-in (`bun run dev`), not from reading this photo. Result says so. */
   sample: boolean;
+  /** True when the user typed it on Describe it yourself, so Working does not credit FixFinder with it. */
+  byUser?: boolean;
 }
 
 export interface FlowState {

@@ -56,6 +56,15 @@ describe("describePhoto", () => {
     expect(await describePhoto(PHOTO)).toEqual({ outcome: "unreachable" });
   });
 
+  it.each([
+    ["the photo is too big", 413],
+    ["the photo is a format the model cannot read", 415],
+  ])("says unclear, not unreachable, when %s, since Try again would fail the same way", async (_, status) => {
+    const describePhoto = await loadDescribePhoto(true);
+    vi.stubGlobal("fetch", answer(status, { error: "No." }));
+    expect(await describePhoto(PHOTO)).toEqual({ outcome: "unclear" });
+  });
+
   it("says unreachable with no connection", async () => {
     const describePhoto = await loadDescribePhoto(true);
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))));

@@ -369,6 +369,9 @@ describe("Report flow", () => {
 
     expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
     expect(screen.getByText("Broken bench")).toBeInTheDocument();
+    // FixFinder did not read the photo, so Working credits the user, not "Reading the photo".
+    expect(screen.getByText("Described by you")).toBeInTheDocument();
+    expect(screen.queryByText("Reading the photo")).not.toBeInTheDocument();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
     geo.allow();
 
