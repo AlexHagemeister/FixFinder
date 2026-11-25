@@ -2,7 +2,7 @@
 
 The words the team and its agents use for things in FixFinder. One word per idea: when a term lists words to avoid, use the term instead, in conversation, in issues, in code, and on screen. Course design terms (affordance, gulf of evaluation, Nielsen's heuristics) live in [DESIGN-VOCABULARY.md](DESIGN-VOCABULARY.md), not here.
 
-A term is added when the team settles on a word, not before. When a screen, flow, or UI element gets a name, it goes under a **Screens and flows** heading with the same rules.
+A term is added when the team settles on a word, not before, and only when it names something essential that could get mixed up with something else. When a screen, flow, or UI element gets such a name, it goes under a **Screens and flows** heading with the same rules. Wording that only appears on screen, such as a step title, notice, or button label, is copy and does not go here.
 
 ## The problem and the report
 
@@ -90,7 +90,15 @@ A screen whose real content is not built yet. It shows sample content that gives
 A section of a real screen that shows sample content, marked with a Sample chip under a Placeholder note. Home's placeholder sections (Your latest report, Problems near you, Is this still there?) come from the mockup, and the team will likely put something different there.
 
 **Working**:
-The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked.
+The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked. When reading the photo doesn't work, Working stops there with a notice and next steps: Retake photo or Try again, and Describe it yourself.
+
+**Try again**:
+Working's main next step when FixFinder couldn't reach the photo reader. It reads the same photo again.
+_Avoid_: retry, reload
+
+**Describe it yourself**:
+Working's quieter next step when reading the photo didn't work, and the screen it opens. The user types the description, and the report carries on with the same photo to Working and Result.
+_Avoid_: manual entry, enter description
 
 **Location needed**:
 The screen FixFinder shows when the user denies location. It says FixFinder needs the location to find who is responsible and stops there, and offers Ask again, which carries on with the same photo. When the phone will likely not ask again, it lists the steps for turning location back on in the phone's settings.
@@ -98,11 +106,20 @@ The screen FixFinder shows when the user denies location. It says FixFinder need
 **Result**:
 The screen that shows what FixFinder found: the user's photo, the description, the location, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
 
-**Placeholder result**:
-The chip and note on Result that say everything on it except the location is sample output, shown while FixFinder does not read photos yet.
+**Sample chip**:
+The small grey "Sample" chip beside a field on Result whose content is sample output, not FixFinder's real answer: the responsible party while FixFinder does not look it up yet, and the description when it came from the stand-in. Home's placeholder sections use the same chip.
+_Avoid_: placeholder result (the note it replaced)
+
+**Photo reader**:
+The AI step that reads the photo and suggests the description, or says it couldn't tell what the problem is. It runs in the Worker (`POST /api/describe-photo`). "Can't reach the photo reader" covers no connection, no answer in time, and the photo reader refusing a call to protect the budget.
+_Avoid_: classifier, vision model, image AI
+
+**Stand-in**:
+A part of FixFinder that answers with made-up but realistic output instead of doing the real work, so the team can build without spending the AI budget. `bun run dev` uses the stand-in photo reader, and the lookup is a stand-in for now.
+_Avoid_: mock (that means a test double), fake, dummy
 
 **Notice**:
-A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, or Location needed's line when location is still off after Ask again.
+A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, Working's message when it couldn't read the photo, or Location needed's line when location is still off after Ask again.
 
 **Report flow**:
-The path one photo takes through the screens: Home, then Working, then Result, or Location needed when the user denies location. In code, `ReportFlow` holds the report in progress.
+The path one photo takes through the screens: Home, then Working, then Result, or Location needed when the user denies location, or Describe it yourself when FixFinder couldn't read the photo. In code, `ReportFlow` holds the report in progress.

@@ -4,11 +4,22 @@ import { useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon, BuildingIcon, ExternalIcon, PinIcon, TagIcon } from "../icons.tsx";
 import { PhotoInput } from "./PhotoInput.tsx";
 
-// Result: shows what FixFinder found, with the photo, the category, the location, the responsible party, and its source.
+// A field's name, with a Sample chip when what it shows is sample output and not FixFinder's real answer.
+function FieldName({ name, sample }: { name: string; sample: boolean }) {
+  if (!sample) return <span className="field-name">{name}</span>;
+  return (
+    <span className="field-head">
+      <span className="field-name">{name}</span>
+      <span className="chip sample">Sample</span>
+    </span>
+  );
+}
+
+// Result: shows what FixFinder found, with the photo, the description, the location, the responsible party, and its source.
 // Layout and wording follow the prototype's review screen. Its Change controls and draft button are left out:
 // correcting the guess and drafting the report are not part of #1, and a control that does nothing is a false signifier.
 export function Result() {
-  const { photo, location, result, startReport } = useReportFlow();
+  const { photo, location, description, result, startReport } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
 
@@ -16,7 +27,7 @@ export function Result() {
   if (!photo) return <Navigate to="/" replace />;
   // A photo with no result is Retake photo starting a new report, on its way to Working. Sending the user Home here
   // would end that report, so the screen stays blank for the moment it takes.
-  if (!result) return null;
+  if (!result || !description) return null;
 
   return (
     <main className="screen">
@@ -34,21 +45,15 @@ export function Result() {
           <img className="thumb large" src={photo.url} alt="Your photo" />
           <h1 className="h-l">Here is what FixFinder found</h1>
         </div>
-        {result.placeholder && (
-          <div className="card pad stack placeholder-note" role="note" aria-label="Placeholder result">
-            <span className="chip">Placeholder result</span>
-            <span className="small">
-              FixFinder does not read photos yet. Everything here except the location is sample output, the same for every photo.
-            </span>
-          </div>
-        )}
         <div className="card rows">
           <div className="row">
             <TagIcon />
             <div className="stack grow">
-              <span className="field-name">Category</span>
-              <span className="value">{result.category}</span>
-              <span className="small">{result.description}</span>
+              {/* A Sample chip on each field that is sample output, rather than a note above the card, keeps the
+                  whole card on screen and leaves a real description undoubted. The description is sample output only
+                  in a local build that uses the stand-in photo reader. */}
+              <FieldName name="Description" sample={description.sample} />
+              <span className="value">{description.text}</span>
             </div>
           </div>
           {location && (
@@ -82,7 +87,7 @@ export function Result() {
           <div className="row">
             <BuildingIcon />
             <div className="stack grow">
-              <span className="field-name">Responsible party</span>
+              <FieldName name="Responsible party" sample={result.placeholder} />
               <span className="value">{result.responsibleParty}</span>
               <a className="source" href={result.source.url} target="_blank" rel="noopener noreferrer">
                 Source: {result.source.name}

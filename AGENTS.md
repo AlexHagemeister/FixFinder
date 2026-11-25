@@ -4,7 +4,7 @@
 - Read [DESIGN-VOCABULARY.md](DESIGN-VOCABULARY.md). When discussing or reviewing design, name the principle at stake (affordance, signifier, gulf of execution, Nielsen 1, and so on), so the team connects course principles to design decisions.
 - Write heuristic findings as `[heuristic][severity] problem + fix`.
 - Use the terms in [GLOSSARY.md](GLOSSARY.md) in conversation, issues, code, and on screen, and never the words it lists to avoid. When the team settles a new term, add it there in the same change.
-- Naming a new screen, flow, or UI element is part of building it: add the name under the glossary's Screens and flows heading in the same PR.
+- When a new screen, flow, or UI element gets a name that meets the glossary's rule for what goes in (essential, and could get mixed up), add it under the glossary's Screens and flows heading in the same PR. On-screen copy does not go in.
 - How the app is built, tested, and deployed lives in [README.md § How FixFinder is built and shipped](README.md#how-fixfinder-is-built-and-shipped). Read it there, and change it there when it changes.
 - Stop a dev preview once the work it was for is done (merged, or the human is finished trying it). Don't leave it running and ask.
 

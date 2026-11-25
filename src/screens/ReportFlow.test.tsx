@@ -5,11 +5,14 @@ import { NOTICES } from "../flow/notices.ts";
 import { reloadPage } from "../flow/reload.ts";
 import { clearPhoto, loadPhoto, SAVED_PHOTO_MAX_AGE_MS, savePhoto, type SavedPhoto } from "../flow/saved-photo.ts";
 import { reverseGeocode, type ReverseGeocode } from "../location/nominatim.ts";
+import { describePhoto } from "../lookup/describe-photo.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import { routes } from "../routes.tsx";
 
 // The real lookup waits on purpose, and the step pacing holds each step on screen. Neither belongs in a test.
 vi.mock("../lookup/lookup.ts", () => ({ lookup: vi.fn() }));
+// The photo reader is a paid AI call, so tests answer for it.
+vi.mock("../lookup/describe-photo.ts", () => ({ describePhoto: vi.fn() }));
 vi.mock("../flow/timing.ts", () => ({ STEP_MIN_MS: 0, FINISH_PAUSE_MS: 0 }));
 // Place names come from Nominatim over the network, so tests answer for it.
 vi.mock("../location/nominatim.ts", () => ({ reverseGeocode: vi.fn() }));
@@ -23,12 +26,12 @@ vi.mock("../flow/saved-photo.ts", async (importOriginal) => ({
 vi.mock("../flow/reload.ts", () => ({ reloadPage: vi.fn() }));
 
 const SAMPLE: LookupResponse = {
-  category: "Pothole",
-  description: "A hole in the road surface.",
   responsibleParty: "Berkeley Public Works",
   source: { name: "City of Berkeley, Street Repair page", url: "https://berkeleyca.gov/street-repair" },
   placeholder: true,
 };
+
+const DESCRIPTION = { text: "Overflowing trash can", sample: false };
 
 const BERKELEY = { latitude: 37.8716, longitude: -122.2727 };
 
@@ -112,6 +115,8 @@ beforeEach(() => {
   URL.revokeObjectURL = vi.fn();
   vi.mocked(lookup).mockReset();
   vi.mocked(lookup).mockResolvedValue(SAMPLE);
+  vi.mocked(describePhoto).mockReset();
+  vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: DESCRIPTION.text, sample: false });
   vi.mocked(reverseGeocode).mockReset();
   vi.mocked(reverseGeocode).mockResolvedValue(SHATTUCK);
   vi.mocked(savePhoto).mockReset();
@@ -131,7 +136,7 @@ afterEach(() => {
 });
 
 describe("Report flow", () => {
-  it("goes from Home to Working to Result, with the photo, category, responsible party, and source", async () => {
+  it("goes from Home to Working to Result, with the photo, description, responsible party, and source", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");
 
@@ -144,8 +149,10 @@ describe("Report flow", () => {
     expect(screen.getByText("Pinning down the location")).toBeInTheDocument();
     expect(screen.getByText("Finding who is responsible")).toBeInTheDocument();
 
-    // Location is asked for after the photo, on the location step.
+    // Location is asked for after the photo is read, on the location step. The photo step shows what it found.
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    expect(describePhoto).toHaveBeenCalledWith(file);
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
     // The ask goes out in the same moment the step changes, so the screen can show it a moment after the ask.
     expect(await screen.findByText("Getting your location")).toBeInTheDocument();
     geo.allow();
@@ -155,8 +162,8 @@ describe("Report flow", () => {
     expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
 
     expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
-    expect(screen.getByText("Pothole")).toBeInTheDocument();
-    expect(screen.getByText("A hole in the road surface.")).toBeInTheDocument();
+    expect(screen.getByText("Description")).toBeInTheDocument();
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
     expect(screen.getByText("Berkeley Public Works")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Source: City of Berkeley, Street Repair page/ })).toHaveAttribute(
       "href",
@@ -178,6 +185,18 @@ describe("Report flow", () => {
     expect(router.state.location.pathname).toBe("/result");
     expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
     expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
+  });
+
+  it("shows the empty photo box on Working, not a broken image, when the browser can't show the photo", async () => {
+    stubGeolocation();
+    await renderAt("/");
+
+    await choosePhoto();
+
+    fireEvent.error(await screen.findByRole("img", { name: "Your photo" }));
+    const box = screen.getByRole("img", { name: "Your photo" });
+    expect(box.tagName).toBe("DIV");
+    expect(box).toHaveClass("thumb");
   });
 
   it("opens Location needed for a chosen photo when the user denies location", async () => {
@@ -262,16 +281,134 @@ describe("Report flow", () => {
     );
   });
 
-  it("labels the result as placeholder output", async () => {
+  it("marks the responsible party as sample output, and not the description read from the photo", async () => {
     const geo = stubGeolocation();
     await renderAt("/");
     await takePhoto();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
     geo.allow();
 
-    const note = await screen.findByRole("note", { name: "Placeholder result" });
-    expect(note).toHaveTextContent("Placeholder result");
-    expect(note).toHaveTextContent("sample output");
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(screen.getAllByText("Sample")).toHaveLength(1);
+    expect(screen.getByText("Responsible party").parentElement).toHaveTextContent("Sample");
+    expect(screen.getByText("Description").parentElement).not.toHaveTextContent("Sample");
+  });
+
+  it("marks the description as sample output too when it came from the stand-in photo reader", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: "Pothole", sample: true });
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalled());
+    geo.allow();
+
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+    expect(screen.getByText("Description").parentElement).toHaveTextContent("Sample");
+    expect(screen.getAllByText("Sample")).toHaveLength(2);
+  });
+
+  it("stops on Working with Retake photo and Describe it yourself when FixFinder can't tell what the problem is", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unclear" });
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    await takePhoto();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "FixFinder couldn't tell what the problem is from this photo.",
+    );
+    expect(router.state.location.pathname).toBe("/working");
+    expect(screen.getByText("Couldn't tell what the problem is")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Describe it yourself" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+    expect(geo.getCurrentPosition).not.toHaveBeenCalled();
+    expect(lookup).not.toHaveBeenCalled();
+
+    // Retake photo opens the camera, and the new photo starts a new report.
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "Retake photo" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: DESCRIPTION.text, sample: false });
+    const retake = new File(["new photo"], "retake.jpg", { type: "image/jpeg" });
+    fireEvent.change(input, { target: { files: [retake] } });
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    expect(describePhoto).toHaveBeenLastCalledWith(retake);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stops on Working with Try again when FixFinder can't reach the photo reader, and Try again reads the same photo", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unreachable" });
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    const file = await takePhoto();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("FixFinder couldn't reach its photo reader.");
+    expect(screen.getByText("Couldn't reach the photo reader")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Describe it yourself" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retake photo" })).not.toBeInTheDocument();
+
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: DESCRIPTION.text, sample: false });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    expect(describePhoto).toHaveBeenCalledTimes(2);
+    expect(describePhoto).toHaveBeenLastCalledWith(file);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    geo.allow();
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/result");
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
+  });
+
+  it("carries a description the user typed to Result, with the same photo and location", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unreachable" });
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    const file = await takePhoto();
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "Describe it yourself" }));
+    expect(await screen.findByRole("heading", { name: "Describe the problem" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/describe");
+    const field = screen.getByLabelText("What is wrong?");
+    const go = screen.getByRole("button", { name: "Continue" });
+    // Nothing to send yet, so Continue is off. Spaces alone are nothing too.
+    expect(go).toBeDisabled();
+    fireEvent.change(field, { target: { value: "   " } });
+    expect(go).toBeDisabled();
+    fireEvent.change(field, { target: { value: "  Broken   bench " } });
+    fireEvent.click(go);
+
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    expect(screen.getByText("Broken bench")).toBeInTheDocument();
+    // FixFinder did not read the photo, so Working credits the user, not "Reading the photo".
+    expect(screen.getByText("Described by you")).toBeInTheDocument();
+    expect(screen.queryByText("Reading the photo")).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    geo.allow();
+
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(screen.getByText("Broken bench")).toBeInTheDocument();
+    // The user's own description is not sample output.
+    expect(screen.getByText("Description").parentElement).not.toHaveTextContent("Sample");
+    expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
+    expect(describePhoto).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes back from Describe it yourself to Working, where the next steps still wait", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unclear" });
+    stubGeolocation();
+    const router = await renderAt("/");
+    await takePhoto();
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "Describe it yourself" }));
+    await screen.findByRole("heading", { name: "Describe the problem" });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/working");
+    expect(screen.getByRole("button", { name: "Retake photo" })).toBeInTheDocument();
   });
 
   it("opens the camera from Result's Retake photo, and a new photo starts a new report", async () => {
@@ -442,7 +579,7 @@ describe("Location needed", () => {
     await renderAt("/");
     const file = await takePhotoAndDeny(geo, A_PERSON_ANSWERING_MS);
 
-    expect(savePhoto).toHaveBeenCalledWith(file, { phoneWillNotAsk: false, resumeAtLocation: false });
+    expect(savePhoto).toHaveBeenCalledWith(file, { phoneWillNotAsk: false, resumeAtLocation: false, description: DESCRIPTION });
     expect(reloadPage).not.toHaveBeenCalled();
   });
 
@@ -454,7 +591,7 @@ describe("Location needed", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ask again" }));
 
     await vi.waitFor(() => expect(reloadPage).toHaveBeenCalledTimes(1));
-    expect(savePhoto).toHaveBeenLastCalledWith(file, { phoneWillNotAsk: false, resumeAtLocation: true });
+    expect(savePhoto).toHaveBeenLastCalledWith(file, { phoneWillNotAsk: false, resumeAtLocation: true, description: DESCRIPTION });
     // The ask happens after the reload, not on this page.
     expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1);
     expect(router.state.location.pathname).toBe("/location-needed");
@@ -473,10 +610,11 @@ describe("Location needed", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ask again" }));
 
-    // Back on Working, at the location step: the photo step is already done.
+    // Back on Working, at the location step: the photo step is already done, and the photo is not read again.
     expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/working");
-    expect(screen.getByText("Photo ready")).toBeInTheDocument();
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
+    expect(describePhoto).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Getting your location")).toBeInTheDocument();
     await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(2));
     expect(reloadPage).not.toHaveBeenCalled();
@@ -580,7 +718,14 @@ describe("Location needed", () => {
 
 describe("App start with a saved photo", () => {
   function saved(overrides: Partial<SavedPhoto> = {}): SavedPhoto {
-    return { photo: photoFile(), savedAt: Date.now(), phoneWillNotAsk: true, resumeAtLocation: true, ...overrides };
+    return {
+      photo: photoFile(),
+      savedAt: Date.now(),
+      phoneWillNotAsk: true,
+      resumeAtLocation: true,
+      description: DESCRIPTION,
+      ...overrides,
+    };
   }
 
   // "/location-needed" is Ask again's reload in place. "/" is a home-screen app opening at its start page.
@@ -594,10 +739,15 @@ describe("App start with a saved photo", () => {
 
       expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
       expect(router.state.location.pathname).toBe("/working");
-      expect(screen.getByText("Photo ready")).toBeInTheDocument();
+      // The saved description comes back, so the photo is not read (and paid for) again.
+      expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
       expect(screen.getByText("Getting your location")).toBeInTheDocument();
       // The resume is used up, so another reload before the step ends opens Location needed instead.
-      expect(savePhoto).toHaveBeenCalledWith(record.photo, { phoneWillNotAsk: true, resumeAtLocation: false });
+      expect(savePhoto).toHaveBeenCalledWith(record.photo, {
+        phoneWillNotAsk: true,
+        resumeAtLocation: false,
+        description: DESCRIPTION,
+      });
 
       await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
       vi.mocked(clearPhoto).mockClear();
@@ -607,6 +757,8 @@ describe("App start with a saved photo", () => {
       expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
       expect(router.state.location.pathname).toBe("/result");
       expect(lookup).toHaveBeenCalledWith({ photo: record.photo, location: expect.objectContaining(BERKELEY) });
+      expect(describePhoto).not.toHaveBeenCalled();
+      expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
       // The finished report no longer needs a saved photo.
       expect(clearPhoto).toHaveBeenCalledTimes(1);
     },
@@ -646,7 +798,11 @@ describe("App start with a saved photo", () => {
     // Ask again from here saves and reloads as usual.
     fireEvent.click(screen.getByRole("button", { name: "Ask again" }));
     await vi.waitFor(() => expect(reloadPage).toHaveBeenCalledTimes(1));
-    expect(savePhoto).toHaveBeenLastCalledWith(expect.any(File), { phoneWillNotAsk: true, resumeAtLocation: true });
+    expect(savePhoto).toHaveBeenLastCalledWith(expect.any(File), {
+      phoneWillNotAsk: true,
+      resumeAtLocation: true,
+      description: DESCRIPTION,
+    });
   });
 
   it("removes a stale saved photo and starts on Home", async () => {

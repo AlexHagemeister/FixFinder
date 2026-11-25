@@ -33,6 +33,15 @@ export function CheckIcon() {
   );
 }
 
+export function AlertIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+      <path d="M12 6v7" />
+      <path d="M12 18h.01" />
+    </svg>
+  );
+}
+
 export function TagIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="row-icon">
