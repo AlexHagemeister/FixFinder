@@ -2,7 +2,7 @@
 
 The words the team and its agents use for things in FixFinder. One word per idea: when a term lists words to avoid, use the term instead, in conversation, in issues, in code, and on screen. Course design terms (affordance, gulf of evaluation, Nielsen's heuristics) live in [DESIGN-VOCABULARY.md](DESIGN-VOCABULARY.md), not here.
 
-A term is added when the team settles on a word, not before. When a screen, flow, or UI element gets a name, it goes under a **Screens and flows** heading with the same rules.
+A term is added when the team settles on a word, not before, and only when it names something essential that could get mixed up with something else. When a screen, flow, or UI element gets such a name, it goes under a **Screens and flows** heading with the same rules. Wording that only appears on screen, such as a step title, notice, or button label, is copy and does not go here.
 
 ## The problem and the report
 

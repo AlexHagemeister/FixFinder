@@ -187,6 +187,18 @@ describe("Report flow", () => {
     expect(screen.getByRole("img", { name: "Your photo" })).toHaveAttribute("src", "blob:photo");
   });
 
+  it("shows the empty photo box on Working, not a broken image, when the browser can't show the photo", async () => {
+    stubGeolocation();
+    await renderAt("/");
+
+    await choosePhoto();
+
+    fireEvent.error(await screen.findByRole("img", { name: "Your photo" }));
+    const box = screen.getByRole("img", { name: "Your photo" });
+    expect(box.tagName).toBe("DIV");
+    expect(box).toHaveClass("thumb");
+  });
+
   it("opens Location needed for a chosen photo when the user denies location", async () => {
     const geo = stubGeolocation();
     const router = await renderAt("/");

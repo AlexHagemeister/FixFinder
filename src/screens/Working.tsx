@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { STEP_ORDER, useReportFlow, type PhotoProblem, type StepId, type StepStatus } from "../flow/flow-context.ts";
 import { AlertIcon, CheckIcon } from "../icons.tsx";
@@ -47,6 +47,8 @@ export function Working() {
   const { photo, steps, location, description, photoProblem, result, startReport, retryPhoto } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
+  // A HEIC photo can't be shown until it has become a JPEG, so the empty photo box stands in for it instead of a broken image.
+  const [unshownUrl, setUnshownUrl] = useState<string | null>(null);
 
   // A reload or a direct visit has no photo in memory, so there is nothing to work on.
   if (!photo) return <Navigate to="/" replace />;
@@ -68,7 +70,11 @@ export function Working() {
           </span>
         </div>
         <div className="photo-row">
-          <img className="thumb" src={photo.url} alt="Your photo" />
+          {unshownUrl === photo.url ? (
+            <div className="thumb" role="img" aria-label="Your photo" />
+          ) : (
+            <img className="thumb" src={photo.url} alt="Your photo" onError={() => setUnshownUrl(photo.url)} />
+          )}
           <div className="stack">
             <span className="eyebrow">Your photo</span>
             <span className="body-15">Taken just now</span>
