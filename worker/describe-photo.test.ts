@@ -128,12 +128,6 @@ describe("handleDescribePhoto", () => {
     expect(response.status).toBe(400);
   });
 
-  it("refuses a model that is not on the list", async () => {
-    const request = photoRequest(PHOTO, { "Content-Type": "image/jpeg", "X-FixFinder-Model": "openai/gpt-6.2-astra" });
-    const response = await handleDescribePhoto(request, env());
-    expect(response.status).toBe(400);
-  });
-
   it("refuses when the per-minute limit is used up", async () => {
     const response = await handleDescribePhoto(photoRequest(), env({ allowed: false }));
     expect(response.status).toBe(429);

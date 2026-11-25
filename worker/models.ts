@@ -12,15 +12,9 @@ export interface StepModel {
 
 export const MODELS = {
   // Reads the photo and suggests a description (issue #25). It needs decent image understanding and a fast answer,
-  // not agentic skill. A first pick from Artificial Analysis's image benchmark (MMMU-Pro) and OpenRouter's prices,
-  // 2026-11-24, still to be checked against real photos in round 1.
+  // not agentic skill. Compared on 2026-11-24 on six street-problem photos at 1024px, with low reasoning: Luna, Gemini
+  // 3.5 Flash-Lite, and GPT-6.1 Terra named every problem about equally well, in 2 to 5 seconds. Luna cost about
+  // $0.00016 a photo, Flash-Lite $0.00045, and Terra $0.0015. A full-size 1.4 MB photo cost Luna three times as much
+  // as the shrunk one, for the same answer.
   describePhoto: { id: "openai/gpt-6-luna", settings: { reasoning: { effort: "low" } } },
 } satisfies Record<string, StepModel>;
-
-// TEMPORARY, for the round 1 model comparison on #25: the models a request may ask the photo reader to use instead.
-// A strict list, since the route is public and these differ tenfold in price. Remove before the PR merges.
-export const DESCRIBE_PHOTO_CANDIDATES: Record<string, StepModel> = {
-  "openai/gpt-6-luna": MODELS.describePhoto,
-  "google/gemini-3.5-flash-lite": { id: "google/gemini-3.5-flash-lite", settings: { reasoning: { effort: "low" } } },
-  "openai/gpt-6.1-terra": { id: "openai/gpt-6.1-terra", settings: { reasoning: { effort: "low" } } },
-};

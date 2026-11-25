@@ -7,7 +7,7 @@
 import { generateText, Output, type LanguageModel } from "ai";
 import { z } from "zod";
 import { openRouterModel, type ModelCallsEnv } from "./model-calls.ts";
-import { DESCRIBE_PHOTO_CANDIDATES, MODELS } from "./models.ts";
+import { MODELS } from "./models.ts";
 
 export interface DescribePhotoEnv extends ModelCallsEnv {
   /** Cloudflare's rate limiter for this route, set in wrangler.jsonc (20 calls a minute). */
@@ -98,13 +98,6 @@ export async function handleDescribePhoto(request: Request, env: DescribePhotoEn
   const declared = Number(request.headers.get("Content-Length") ?? 0);
   if (declared > MAX_PHOTO_BYTES) return refuse(413, "That photo is too big.");
 
-  const step = (() => {
-    const asked = request.headers.get("X-FixFinder-Model");
-    if (!asked) return MODELS.describePhoto;
-    return DESCRIBE_PHOTO_CANDIDATES[asked] ?? null;
-  })();
-  if (!step) return refuse(400, "That model is not one the photo reader can use.");
-
   // The limiter counts the call as it starts, so a burst of requests at once cannot all slip through.
   const { success } = await env.DESCRIBE_PHOTO_LIMITER.limit({ key: OPERATION });
   if (!success) return refuse(429, "The photo reader is busy. Try again in a minute.");
@@ -117,7 +110,8 @@ export async function handleDescribePhoto(request: Request, env: DescribePhotoEn
   if (photo.byteLength > MAX_PHOTO_BYTES) return refuse(413, "That photo is too big.");
 
   try {
-    const model = openRouterModel(env, OPERATION, step.id, step.settings);
+    const { id, settings } = MODELS.describePhoto;
+    const model = openRouterModel(env, OPERATION, id, settings);
     return Response.json(await readPhoto(model, photo, mediaType) satisfies DescribePhotoAnswer);
   } catch (error) {
     console.error("FixFinder's photo reader failed", error);
