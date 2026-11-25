@@ -20,8 +20,8 @@ export function Result() {
   if (!result) return null;
 
   return (
-    <main className="screen">
-      <div className="scroll">
+    <main className="screen result-screen">
+      <div className="scroll result-scroll">
         <div className="top">
           {/* Retake photo opens the camera, as its label says, and a new photo starts a new report. If the user closes
               the camera without a photo, Result stays. */}

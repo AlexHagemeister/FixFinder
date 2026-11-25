@@ -158,12 +158,24 @@ button { font: inherit; color: inherit; }
 }
 
 /* Result: what FixFinder found, one row per answer. */
+.result-screen { container-type: inline-size; }
+.result-scroll {
+  display: block;
+  padding-inline: 0;
+  scrollbar-gutter: stable both-edges;
+}
+.result-scroll > * {
+  width: calc(100cqw - max(20px, env(safe-area-inset-left, 0px)) - max(20px, env(safe-area-inset-right, 0px)));
+  margin-inline-start: calc(max(20px, env(safe-area-inset-left, 0px)) - (100cqw - 100%) / 2);
+}
+.result-scroll > * + * { margin-block-start: 16px; }
 .rows { display: flex; flex-direction: column; overflow: hidden; }
 .row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
 .row:last-child { border-bottom: none; }
 .row-icon { flex-shrink: 0; margin-top: 2px; }
 .location-change { display: flex; align-items: center; gap: 12px; min-height: 44px; width: 100%; border: 0; padding: 0; background: none; color: inherit; text-align: left; font: inherit; cursor: pointer; }
 .location-change-signifier { color: var(--link); font-size: 14px; font-weight: 600; }
+.location-change .value { overflow-wrap: anywhere; }
 .location-pick { align-self: flex-start; }
 .location-picker { width: min(100% - 24px, 440px); max-height: calc(100dvh - 24px); padding: 0; border: none; border-radius: 20px; background: var(--surface); color: var(--fg); }
 .location-picker::backdrop { background: rgb(14 15 18 / 55%); }
