@@ -20,6 +20,11 @@
 - If the issue is already assigned to someone else, stop and tell your user. Don't start it unless they've cleared it with that person.
 - Whenever you list open issues (including the snapshot from `/prime-gnadd`), mark each one as open or assigned, with the assignee's name. Fetch them with `gh issue list --state open --json number,title,assignees`, since prime's own listing leaves assignees out.
 
+## Issue dependencies
+
+- When an issue can't be finished before another one, record it as GitHub's "blocked by" relationship: `gh issue create --blocked-by <N>`, or `gh issue edit <N> --add-blocked-by <M>` later. The body can say why, but the relationship is the record. A soft link ("uses #26 if it has landed, otherwise a sample is enough") is not a blocker.
+- Before starting an issue, check its blockers with `gh issue view <N> --json blockedBy`. If one is still open, tell your user before starting. A closed blocker no longer counts, so leave it in place.
+
 ## Reviewing pull requests
 
 - Whenever you are asked to review a PR, however the request is worded, follow [REVIEWING.md](REVIEWING.md).
