@@ -81,7 +81,7 @@ This workflow is called GNADD. Its guide and agent skills are at [AlexHagemeiste
 
 ## AI usage
 
-Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Turn on real AI calls only on purpose, and check in the team Discord first.
+Our AI usage through the course is limited. Build and test against the stand-in AI step, which returns made-up but realistic results. Real AI calls spend the team's shared course budget, so make them on purpose and keep an eye on spend with `bun run model-calls`.
 
 Every model call is recorded with what it cost. `bun run model-calls` saves the records to `model-calls.json` (not committed) and prints total spend, the most expensive operation, and the spend for each operation. Agents can search that file, for example with `jq`. The same records are at https://fixfinder.alexhagemeister.workers.dev/api/model-calls.
 
