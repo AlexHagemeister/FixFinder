@@ -10,6 +10,7 @@ import {
   type FlowState,
   type FlowValue,
   type PhotoDescription,
+  type PhotoProblem,
   type StepId,
   type StepStatus,
 } from "./flow-context.ts";
@@ -34,6 +35,7 @@ const EMPTY: FlowState = {
   steps: ALL_WAITING,
   location: null,
   description: null,
+  photoProblem: null,
   result: null,
   notice: null,
   locationNeeded: null,
@@ -113,8 +115,12 @@ export function ReportFlow() {
           if (file.type && !file.type.startsWith("image/")) return stop(NOTICES.notAPhoto);
           const [reading] = await Promise.all([describePhoto(file), pause(STEP_MIN_MS)]);
           if (!isLatest()) return;
-          if (reading.outcome === "unclear") return stop(NOTICES.photoUnclear);
-          if (reading.outcome === "unreachable") return stop(NOTICES.photoReaderUnreachable);
+          if (reading.outcome !== "described") {
+            // The run stops on Working, which says what went wrong and offers next steps with the same photo.
+            const photoProblem: PhotoProblem = reading.outcome;
+            setState((current) => ({ ...current, photoProblem, steps: { ...current.steps, photo: "failed" } }));
+            return;
+          }
           description = { text: reading.description, sample: reading.sample };
           setState((current) => ({
             ...current,
@@ -207,6 +213,7 @@ export function ReportFlow() {
         steps: { ...ALL_WAITING, photo: "current" },
         location: null,
         description: null,
+        photoProblem: null,
         result: null,
         notice: null,
         locationNeeded: null,
@@ -237,6 +244,7 @@ export function ReportFlow() {
         steps: AT_LOCATION,
         location: null,
         description,
+        photoProblem: null,
         result: null,
         notice: null,
         locationNeeded: { phoneWillNotAsk, stillOff: false },
@@ -277,7 +285,28 @@ export function ReportFlow() {
     })();
   }, [photo, description, phoneWillNotAsk, navigate, runSteps]);
 
-  const value = useMemo<FlowValue>(() => ({ ...state, startReport, askAgain }), [state, startReport, askAgain]);
+  const retryPhoto = useCallback(() => {
+    if (!photo) return;
+    setState((current) => ({ ...current, photoProblem: null, steps: { ...ALL_WAITING, photo: "current" } }));
+    runSteps(photo.file, { from: "photo" });
+  }, [photo, runSteps]);
+
+  const describeItYourself = useCallback(
+    (text: string) => {
+      if (!photo) return;
+      const own: PhotoDescription = { text, sample: false };
+      setState((current) => ({ ...current, description: own, photoProblem: null, steps: AT_LOCATION }));
+      // Replace, so the back gesture from Working goes to Home and not back to Describe it yourself.
+      navigate("/working", { replace: true });
+      runSteps(photo.file, { from: "location", description: own });
+    },
+    [photo, navigate, runSteps],
+  );
+
+  const value = useMemo<FlowValue>(
+    () => ({ ...state, startReport, askAgain, retryPhoto, describeItYourself }),
+    [state, startReport, askAgain, retryPhoto, describeItYourself],
+  );
 
   return (
     <FlowContext value={value}>

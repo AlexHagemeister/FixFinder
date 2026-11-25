@@ -295,20 +295,105 @@ describe("Report flow", () => {
     expect(screen.getAllByText("Sample")).toHaveLength(2);
   });
 
-  // Round 1 of #25 stops on Home for both. Round 2 gives each its own next steps on Working.
-  it.each([
-    ["could not tell what the problem is", "unclear", NOTICES.photoUnclear],
-    ["could not reach the photo reader", "unreachable", NOTICES.photoReaderUnreachable],
-  ] as const)("returns to Home with a message when FixFinder %s", async (_, outcome, notice) => {
-    vi.mocked(describePhoto).mockResolvedValue({ outcome });
+  it("stops on Working with Retake photo and Describe it yourself when FixFinder can't tell what the problem is", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unclear" });
     const geo = stubGeolocation();
     const router = await renderAt("/");
     await takePhoto();
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(notice);
-    expect(router.state.location.pathname).toBe("/");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "FixFinder couldn't tell what the problem is from this photo.",
+    );
+    expect(router.state.location.pathname).toBe("/working");
+    expect(screen.getByText("Couldn't tell what the problem is")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Describe it yourself" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
     expect(geo.getCurrentPosition).not.toHaveBeenCalled();
     expect(lookup).not.toHaveBeenCalled();
+
+    // Retake photo opens the camera, and the new photo starts a new report.
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const click = vi.spyOn(input, "click");
+    fireEvent.click(screen.getByRole("button", { name: "Retake photo" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: DESCRIPTION.text, sample: false });
+    const retake = new File(["new photo"], "retake.jpg", { type: "image/jpeg" });
+    fireEvent.change(input, { target: { files: [retake] } });
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    expect(describePhoto).toHaveBeenLastCalledWith(retake);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("stops on Working with Try again when FixFinder can't reach the photo reader, and Try again reads the same photo", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unreachable" });
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    const file = await takePhoto();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("FixFinder couldn't reach its photo reader.");
+    expect(screen.getByText("Couldn't reach the photo reader")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Describe it yourself" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retake photo" })).not.toBeInTheDocument();
+
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: DESCRIPTION.text, sample: false });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    expect(describePhoto).toHaveBeenCalledTimes(2);
+    expect(describePhoto).toHaveBeenLastCalledWith(file);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    geo.allow();
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/result");
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
+  });
+
+  it("carries a description the user typed to Result, with the same photo and location", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unreachable" });
+    const geo = stubGeolocation();
+    const router = await renderAt("/");
+    const file = await takePhoto();
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "Describe it yourself" }));
+    expect(await screen.findByRole("heading", { name: "Describe the problem" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/describe");
+    const field = screen.getByLabelText("What is wrong?");
+    const go = screen.getByRole("button", { name: "Continue" });
+    // Nothing to send yet, so Continue is off. Spaces alone are nothing too.
+    expect(go).toBeDisabled();
+    fireEvent.change(field, { target: { value: "   " } });
+    expect(go).toBeDisabled();
+    fireEvent.change(field, { target: { value: "  Broken   bench " } });
+    fireEvent.click(go);
+
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    expect(screen.getByText("Broken bench")).toBeInTheDocument();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    geo.allow();
+
+    expect(await screen.findByRole("heading", { name: "Here is what FixFinder found" })).toBeInTheDocument();
+    expect(screen.getByText("Broken bench")).toBeInTheDocument();
+    // The user's own description is not sample output.
+    expect(screen.getByText("Description").parentElement).not.toHaveTextContent("Sample");
+    expect(lookup).toHaveBeenCalledWith({ photo: file, location: expect.objectContaining(BERKELEY) });
+    expect(describePhoto).toHaveBeenCalledTimes(1);
+  });
+
+  it("goes back from Describe it yourself to Working, where the next steps still wait", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "unclear" });
+    stubGeolocation();
+    const router = await renderAt("/");
+    await takePhoto();
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "Describe it yourself" }));
+    await screen.findByRole("heading", { name: "Describe the problem" });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(await screen.findByRole("heading", { name: "Working on your report" })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/working");
+    expect(screen.getByRole("button", { name: "Retake photo" })).toBeInTheDocument();
   });
 
   it("opens the camera from Result's Retake photo, and a new photo starts a new report", async () => {

@@ -1,5 +1,6 @@
 import type { RouteObject } from "react-router";
 import { ReportFlow } from "./flow/ReportFlow.tsx";
+import { DescribeYourself } from "./screens/DescribeYourself.tsx";
 import { Home } from "./screens/Home.tsx";
 import { LocationNeeded } from "./screens/LocationNeeded.tsx";
 import { MyReports } from "./screens/MyReports.tsx";
@@ -23,6 +24,7 @@ export const routes: RouteObject[] = [
         ],
       },
       { path: "/working", element: <Working /> },
+      { path: "/describe", element: <DescribeYourself /> },
       { path: "/location-needed", element: <LocationNeeded /> },
       { path: "/result", element: <Result /> },
     ],

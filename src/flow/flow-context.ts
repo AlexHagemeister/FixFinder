@@ -6,7 +6,10 @@ import type { LookupResponse } from "../lookup/lookup.ts";
 export type StepId = "photo" | "location" | "responsibleParty";
 export const STEP_ORDER: readonly StepId[] = ["photo", "location", "responsibleParty"];
 
-export type StepStatus = "waiting" | "current" | "done";
+export type StepStatus = "waiting" | "current" | "done" | "failed";
+
+/** Why the photo step did not work: the photo reader could not tell what the problem is, or could not be reached. */
+export type PhotoProblem = "unclear" | "unreachable";
 
 /** The description FixFinder suggests from the photo, like "Overflowing trash can". */
 export interface PhotoDescription {
@@ -24,8 +27,10 @@ export interface FlowState {
   steps: Record<StepId, StepStatus>;
   /** What the location step found: the location to show, and the location detail for the lookup. */
   location: FoundLocation | null;
-  /** What the photo step found. */
+  /** What the photo step found, or what the user typed in Describe it yourself. */
   description: PhotoDescription | null;
+  /** Set when the photo step did not work. Working then offers next steps instead of carrying on. */
+  photoProblem: PhotoProblem | null;
   result: LookupResponse | null;
   /** A short message for Home when a run stopped early, such as when the location could not be found. */
   notice: string | null;
@@ -45,6 +50,10 @@ export interface FlowActions {
    * It saves the photo and reloads the page, since Safari keeps a denial for the life of the page.
    */
   askAgain: () => void;
+  /** Try again: reads the same photo again, after FixFinder could not reach the photo reader. */
+  retryPhoto: () => void;
+  /** Describe it yourself: carries on with the description the user typed, with the same photo. */
+  describeItYourself: (text: string) => void;
 }
 
 export type FlowValue = FlowState & FlowActions;

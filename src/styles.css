@@ -149,6 +149,7 @@ button { font: inherit; color: inherit; }
 .step:last-child { border-bottom: none; }
 .mark { width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
 .mark.done { border-radius: 14px; background: var(--ok); }
+.mark.failed { border-radius: 14px; background: var(--accent); }
 .spin { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--accent-track); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 .wait { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--pending); }
 .step-title { font-size: 16px; font-weight: 600; }
@@ -185,6 +186,14 @@ button { font: inherit; color: inherit; }
 .turn-on-title { font-size: 15px; }
 .settings-steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
 
+/* Describe it yourself: one text field for the description. 17px text keeps iPhone Safari from zooming in on focus. */
+.field-label { font-size: 15px; font-weight: 600; }
+.text-input {
+  width: 100%; min-height: 52px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--fg); font: inherit; font-size: 17px;
+}
+
 /* Primary button: full width and 58px tall, a large target near the screen edge (Fitts's law). */
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 10px;
@@ -197,6 +206,8 @@ button { font: inherit; color: inherit; }
 .btn.primary { background: var(--accent); color: var(--accent-fg); }
 /* Text button: the quieter way out below a primary button, still a full-width 46px target. */
 .btn.text { min-height: 46px; background: none; color: var(--link); font-size: 16px; }
+/* Off until it can do something, as Describe it yourself's Continue is with no text yet. */
+.btn:disabled { opacity: 0.45; cursor: default; }
 /* Pressed state: phones have no hover, so every tap answers right away. */
 .btn:active { transform: scale(0.97); filter: brightness(0.9); }
 @media (prefers-reduced-motion: reduce) {

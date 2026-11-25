@@ -90,7 +90,15 @@ A screen whose real content is not built yet. It shows sample content that gives
 A section of a real screen that shows sample content, marked with a Sample chip under a Placeholder note. Home's placeholder sections (Your latest report, Problems near you, Is this still there?) come from the mockup, and the team will likely put something different there.
 
 **Working**:
-The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked.
+The screen FixFinder shows after the photo is taken, listing each step it takes (reading the photo, pinning down the location, finding who is responsible) and whether each one worked. When reading the photo doesn't work, Working stops there with a notice and next steps: Retake photo or Try again, and Describe it yourself.
+
+**Try again**:
+Working's main next step when FixFinder couldn't reach the photo reader. It reads the same photo again.
+_Avoid_: retry, reload
+
+**Describe it yourself**:
+Working's quieter next step when reading the photo didn't work, and the screen it opens. The user types the description, and the report carries on with the same photo to Working and Result.
+_Avoid_: manual entry, enter description
 
 **Location needed**:
 The screen FixFinder shows when the user denies location. It says FixFinder needs the location to find who is responsible and stops there, and offers Ask again, which carries on with the same photo. When the phone will likely not ask again, it lists the steps for turning location back on in the phone's settings.
@@ -111,7 +119,7 @@ A part of FixFinder that answers with made-up but realistic output instead of do
 _Avoid_: mock (that means a test double), fake, dummy
 
 **Notice**:
-A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, or Location needed's line when location is still off after Ask again.
+A short orange message that says why FixFinder stopped, like Home's message when FixFinder could not find the location, Working's message when it couldn't read the photo, or Location needed's line when location is still off after Ask again.
 
 **Report flow**:
-The path one photo takes through the screens: Home, then Working, then Result, or Location needed when the user denies location. In code, `ReportFlow` holds the report in progress.
+The path one photo takes through the screens: Home, then Working, then Result, or Location needed when the user denies location, or Describe it yourself when FixFinder couldn't read the photo. In code, `ReportFlow` holds the report in progress.
