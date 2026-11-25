@@ -23,7 +23,8 @@ if (!response.ok) {
 const records = (await response.json()) as { totals: Totals; calls: unknown[] };
 await writeFile("model-calls.json", JSON.stringify(records, null, 2) + "\n");
 
-const dollars = (n: number) => `$${n.toFixed(4)}`;
+// One call costs a fraction of a cent, so small amounts keep two significant digits instead of rounding to $0.
+const dollars = (n: number) => (n === 0 || n >= 0.01 ? `$${n.toFixed(2)}` : `$${n.toPrecision(2)}`);
 const { totals } = records;
 console.log(`Saved ${totals.calls} model calls to model-calls.json\n`);
 console.log(`Total spend: ${dollars(totals.costUsd)}`);
