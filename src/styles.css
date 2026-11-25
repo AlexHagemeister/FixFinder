@@ -163,6 +163,14 @@ button { font: inherit; color: inherit; }
 .rows { display: flex; flex-direction: column; overflow: hidden; }
 .row { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line-soft); }
 .row:last-child { border-bottom: none; }
+.row-button {
+  width: 100%; min-height: 68px; align-items: center;
+  background: none; border-top: none; border-left: none; border-right: none;
+  text-align: left; cursor: pointer; transition: background-color 80ms ease;
+}
+.row-button:active { background: var(--press); }
+.row-action { flex-shrink: 0; font-size: 14px; font-weight: 600; color: var(--link); }
+.edit-description-form { gap: 10px; }
 .row-icon { flex-shrink: 0; margin-top: 2px; }
 .value { font-size: 17px; font-weight: 600; }
 /* Padded to a 44px tap target. The icon sits inline so it follows the text when the name wraps. */
@@ -240,6 +248,7 @@ button { font: inherit; color: inherit; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .section-head h2 { font-family: var(--font-body); letter-spacing: 0.07em; line-height: 1.3; }
 .chip.sample { align-self: center; color: var(--muted); background: var(--line-soft); }
+.chip.edited { align-self: center; color: var(--ok-text); background: var(--ok-soft); }
 .sample-card { gap: 8px; }
 .pill { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 999px; color: var(--ok-text); background: var(--ok-soft); white-space: nowrap; }
 .link-btn { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; color: var(--link); font-size: 15px; font-weight: 600; text-decoration: none; }
@@ -248,6 +257,7 @@ button { font: inherit; color: inherit; }
 /* Wide enough for "Following", so a tap on Follow does not widen the button and shift the card. */
 .near-card .btn.small { min-width: 116px; }
 .btn.small { min-height: 44px; width: auto; padding: 0 16px; border-radius: 12px; font-size: 15px; background: var(--line-soft); color: var(--fg); }
+.btn.small.primary { background: var(--accent); color: var(--accent-fg); }
 .btn.small.on { background: var(--ok-soft); color: var(--ok-text); }
 .btn-row { display: flex; gap: 8px; }
 .btn-row .btn.small { flex: 1; }

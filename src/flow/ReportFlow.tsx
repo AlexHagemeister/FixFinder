@@ -8,6 +8,7 @@ import { readablePhoto } from "../lookup/readable-photo.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import {
   FlowContext,
+  normalizeDescription,
   type FlowState,
   type FlowValue,
   type PhotoDescription,
@@ -314,9 +315,21 @@ export function ReportFlow() {
     [photo, navigate, runSteps],
   );
 
+  const editDescription = useCallback((text: string) => {
+    const trimmed = normalizeDescription(text);
+    if (!trimmed) return;
+    setState((current) => {
+      if (!current.description || current.description.text === trimmed) return current;
+      return {
+        ...current,
+        description: { ...current.description, text: trimmed, sample: false, edited: true },
+      };
+    });
+  }, []);
+
   const value = useMemo<FlowValue>(
-    () => ({ ...state, startReport, askAgain, retryPhoto, describeItYourself }),
-    [state, startReport, askAgain, retryPhoto, describeItYourself],
+    () => ({ ...state, startReport, askAgain, retryPhoto, describeItYourself, editDescription }),
+    [state, startReport, askAgain, retryPhoto, describeItYourself, editDescription],
   );
 
   return (

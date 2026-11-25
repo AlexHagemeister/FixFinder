@@ -1,33 +1,53 @@
-import { useRef } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { useReportFlow } from "../flow/flow-context.ts";
+import { MAX_DESCRIPTION_CHARS, normalizeDescription, useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon, BuildingIcon, ExternalIcon, PinIcon, TagIcon } from "../icons.tsx";
 import { PhotoInput } from "./PhotoInput.tsx";
 
-// A field's name, with a Sample chip when what it shows is sample output and not FixFinder's real answer.
-function FieldName({ name, sample }: { name: string; sample: boolean }) {
-  if (!sample) return <span className="field-name">{name}</span>;
+// A field's name, with a chip when the value is sample output or was edited by the user.
+function FieldName({ name, sample = false, edited = false }: { name: string; sample?: boolean; edited?: boolean }) {
+  const chip = edited ? { label: "Your edit", tone: "edited" } : sample ? { label: "Sample", tone: "sample" } : null;
+  if (!chip) return <span className="field-name">{name}</span>;
   return (
     <span className="field-head">
       <span className="field-name">{name}</span>
-      <span className="chip sample">Sample</span>
+      <span className={`chip ${chip.tone}`}>{chip.label}</span>
     </span>
   );
 }
 
 // Result: shows what FixFinder found, with the photo, the description, the location, the responsible party, and its source.
-// Layout and wording follow the prototype's review screen. Its Change controls and draft button are left out:
-// correcting the guess and drafting the report are not part of #1, and a control that does nothing is a false signifier.
+// The user can edit the description here (invariants 5 and 8); correcting the location and drafting the report are separate.
 export function Result() {
-  const { photo, location, description, result, startReport } = useReportFlow();
+  const { photo, location, description, result, startReport, editDescription } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
 
   // A reload or a direct visit has nothing in memory to show.
   if (!photo) return <Navigate to="/" replace />;
   // A photo with no result is Retake photo starting a new report, on its way to Working. Sending the user Home here
   // would end that report, so the screen stays blank for the moment it takes.
   if (!result || !description) return null;
+
+  const currentDescription = description;
+
+  function startEditing() {
+    setDraft(currentDescription.text);
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+  }
+
+  function onSave(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = normalizeDescription(draft);
+    if (trimmed) editDescription(trimmed);
+    setEditing(false);
+  }
 
   return (
     <main className="screen">
@@ -46,16 +66,48 @@ export function Result() {
           <h1 className="h-l">Here is what FixFinder found</h1>
         </div>
         <div className="card rows">
-          <div className="row">
-            <TagIcon />
-            <div className="stack grow">
-              {/* A Sample chip on each field that is sample output, rather than a note above the card, keeps the
-                  whole card on screen and leaves a real description undoubted. The description is sample output only
-                  in a local build that uses the stand-in photo reader. */}
-              <FieldName name="Description" sample={description.sample} />
-              <span className="value">{description.text}</span>
+          {editing ? (
+            <div className="row">
+              <TagIcon />
+              <form className="stack grow edit-description-form" onSubmit={onSave}>
+                <label className="field-name" htmlFor="edit-description">
+                  Description
+                </label>
+                <input
+                  id="edit-description"
+                  className="text-input"
+                  type="text"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") cancelEditing();
+                  }}
+                  maxLength={MAX_DESCRIPTION_CHARS}
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  autoFocus
+                />
+                <div className="btn-row">
+                  <button type="button" className="btn small" onClick={cancelEditing}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn small primary">
+                    Save
+                  </button>
+                </div>
+              </form>
             </div>
-          </div>
+          ) : (
+            <button type="button" className="row row-button" onClick={startEditing}>
+              <TagIcon />
+              <span className="stack grow">
+                {/* A Sample chip marks stand-in output; "Your edit" marks a description the user changed here. */}
+                <FieldName name="Description" sample={currentDescription.sample} edited={currentDescription.edited} />
+                <span className="value">{currentDescription.text}</span>
+              </span>
+              <span className="row-action">Edit</span>
+            </button>
+          )}
           {location && (
             <div className="row">
               <PinIcon />

@@ -817,3 +817,88 @@ describe("App start with a saved photo", () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 });
+
+describe("Editing the description on Result", () => {
+  async function reachResult() {
+    const geo = stubGeolocation();
+    await renderAt("/");
+    await takePhoto();
+    await vi.waitFor(() => expect(geo.getCurrentPosition).toHaveBeenCalledTimes(1));
+    geo.allow();
+    await screen.findByRole("heading", { name: "Here is what FixFinder found" });
+  }
+
+  it("lets the user edit FixFinder's pre-filled suggestion and marks the new description as their edit", async () => {
+    await reachResult();
+
+    const row = screen.getByRole("button", { name: /Description.*Overflowing trash can/ });
+    expect(row).toHaveTextContent("Edit");
+    expect(screen.queryByText("Your edit")).not.toBeInTheDocument();
+
+    fireEvent.click(row);
+    const input = screen.getByLabelText("Description");
+    expect(input).toHaveValue("Overflowing trash can");
+
+    fireEvent.change(input, { target: { value: "  Smashed   bus shelter glass " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
+    expect(screen.getByText("Smashed bus shelter glass")).toBeInTheDocument();
+    expect(screen.getByText("Description").parentElement).toHaveTextContent("Your edit");
+  });
+
+  it("clears the Sample chip and marks Your edit when the user edits a stand-in description", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: "Pothole", sample: true });
+    await reachResult();
+
+    expect(screen.getByText("Description").parentElement).toHaveTextContent("Sample");
+    fireEvent.click(screen.getByRole("button", { name: /Description.*Pothole/ }));
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Deep pothole in bike lane" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const descriptionHead = screen.getByText("Description").parentElement!;
+    expect(descriptionHead).not.toHaveTextContent("Sample");
+    expect(descriptionHead).toHaveTextContent("Your edit");
+    expect(screen.getByText("Deep pothole in bike lane")).toBeInTheDocument();
+  });
+
+  it("keeps the description as it was when backing out with Cancel or Escape", async () => {
+    vi.mocked(describePhoto).mockResolvedValue({ outcome: "described", description: "Pothole", sample: true });
+    await reachResult();
+
+    fireEvent.click(screen.getByRole("button", { name: /Description.*Pothole/ }));
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Something else" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
+    expect(screen.getByText("Pothole")).toBeInTheDocument();
+    expect(screen.getByText("Description").parentElement).toHaveTextContent("Sample");
+    expect(screen.queryByText("Your edit")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Description.*Pothole/ }));
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Another draft" } });
+    fireEvent.keyDown(screen.getByLabelText("Description"), { key: "Escape" });
+
+    expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
+    expect(screen.getByText("Pothole")).toBeInTheDocument();
+  });
+
+  it("keeps the description as it was when left empty or unchanged", async () => {
+    await reachResult();
+
+    fireEvent.click(screen.getByRole("button", { name: /Description.*Overflowing trash can/ }));
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "   " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
+    expect(screen.queryByText("Your edit")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Description.*Overflowing trash can/ }));
+    fireEvent.change(screen.getByLabelText("Description"), { target: { value: "  Overflowing trash can " } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByText("Overflowing trash can")).toBeInTheDocument();
+    expect(screen.queryByText("Your edit")).not.toBeInTheDocument();
+  });
+});
