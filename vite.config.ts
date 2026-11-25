@@ -14,7 +14,12 @@ export default defineConfig({
       injectRegister: false,
       // The plugin turns these on for autoUpdate only when injectRegister is "auto", so with false they are set here.
       // Without them the new service worker waits for every open copy to close, and the reload never comes.
-      workbox: { skipWaiting: true, clientsClaim: true },
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        // The HEIC decoder (about 3 MB) loads only when a photo needs it, so it is not downloaded ahead of time.
+        globIgnores: ["**/heic-to-*.js"],
+      },
       includeAssets: ["favicon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "FixFinder",

@@ -4,6 +4,7 @@ import { phoneWillNotAskAgain } from "../location/permission.ts";
 import { findLocation } from "../location/location-detail.ts";
 import { getPosition, PositionError, type Position } from "../location/position.ts";
 import { describePhoto } from "../lookup/describe-photo.ts";
+import { readablePhoto } from "../lookup/readable-photo.ts";
 import { lookup, type LookupResponse } from "../lookup/lookup.ts";
 import {
   FlowContext,
@@ -96,10 +97,21 @@ export function ReportFlow() {
     if (restoreTarget && pathname === restoreTarget) setRestoreTarget(null);
   }, [restoreTarget, pathname]);
 
+  const holdPhoto = useCallback(
+    (file: File) => {
+      releasePhoto();
+      const url = URL.createObjectURL(file);
+      photoUrlRef.current = url;
+      return { file, url };
+    },
+    [releasePhoto],
+  );
+
   // Runs the report's steps for `file`. A new report starts at the photo step. Ask again starts at the location step,
   // so the photo step stays done, its description is kept, and the same photo goes to the lookup.
   const runSteps = useCallback(
-    (file: File, start: RunStart) => {
+    (taken: File, start: RunStart) => {
+      let file = taken;
       const run = ++runRef.current;
       const isLatest = () => runRef.current === run;
       const stop = (notice: string) => {
@@ -113,6 +125,15 @@ export function ReportFlow() {
         if (start.from === "photo") {
           // Step 1: reading the photo. Some phones leave the file's kind blank, so only a known non-photo stops here.
           if (file.type && !file.type.startsWith("image/")) return stop(NOTICES.notAPhoto);
+          // A HEIC photo this browser cannot show becomes a JPEG, and the report carries on with that one.
+          const readable = await readablePhoto(file);
+          if (!isLatest()) return;
+          if (readable !== file) {
+            file = readable;
+            // Held outside the updater: holdPhoto revokes the previous URL, and an updater can run twice.
+            const held = holdPhoto(readable);
+            setState((current) => ({ ...current, photo: held }));
+          }
           const [reading] = await Promise.all([describePhoto(file), pause(STEP_MIN_MS)]);
           if (!isLatest()) return;
           if (reading.outcome !== "described") {
@@ -192,17 +213,7 @@ export function ReportFlow() {
         navigate("/result", { replace: true });
       })();
     },
-    [navigate],
-  );
-
-  const holdPhoto = useCallback(
-    (file: File) => {
-      releasePhoto();
-      const url = URL.createObjectURL(file);
-      photoUrlRef.current = url;
-      return { file, url };
-    },
-    [releasePhoto],
+    [navigate, holdPhoto],
   );
 
   const startReport = useCallback(
