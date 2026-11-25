@@ -20,6 +20,8 @@ FixFinder is the semester project for **CS 160: User Interface Design and Develo
 
 Deadlines, deliverables, and grading live on the [course site](https://teaching.paulos.net/cs160_FL2026/) and bCourses. Course questions go to Ed.
 
+The full text of the staff's instructions for the six final deliverables (PR, poster, presentation, video, public showcase, report) is copied into [docs/project-instructions/](docs/project-instructions/README.md). bCourses stays the authority if they differ.
+
 ## The team
 
 Octopod is Team 8:
