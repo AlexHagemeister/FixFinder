@@ -14,6 +14,9 @@ dev-dist/
 .env
 .env.*
 
+# Model call records saved by `bun run model-calls` (the record itself lives in the Worker's database)
+model-calls.json
+
 # Logs and editor/OS files
 *.log
 .DS_Store
