@@ -6,6 +6,7 @@
 - Use the terms in [GLOSSARY.md](GLOSSARY.md) in conversation, issues, code, and on screen, and never the words it lists to avoid. When the team settles a new term, add it there in the same change.
 - When a new screen, flow, or UI element gets a name that meets the glossary's rule for what goes in (essential, and could get mixed up), add it under the glossary's Screens and flows heading in the same PR. On-screen copy does not go in.
 - How the app is built, tested, and deployed lives in [README.md § How FixFinder is built and shipped](README.md#how-fixfinder-is-built-and-shipped). Read it there, and change it there when it changes.
+- The staff's full instructions for the final deliverables are in [docs/project-instructions/](docs/project-instructions/README.md). Don't read them at session start. Open the relevant file when a task touches what staff require: the demo, labeling AI output, handling slow or wrong responses, or what the report needs from the repo. If a copy there disagrees with bCourses, bCourses wins.
 - Stop a dev preview once the work it was for is done (merged, or the human is finished trying it). Don't leave it running and ask.
 
 ## Logging the app's AI mistakes
