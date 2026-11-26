@@ -11,6 +11,14 @@ export type StepStatus = "waiting" | "current" | "done" | "failed";
 /** Why the photo step did not work: the photo reader could not tell what the problem is, or could not be reached. */
 export type PhotoProblem = "unclear" | "unreachable";
 
+/** The longest description the user can type. The photo reader's own descriptions stay under this too. */
+export const MAX_DESCRIPTION_CHARS = 60;
+
+/** Collapses internal whitespace and trims ends so blank or spaced-out edits compare cleanly. */
+export function normalizeDescription(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
 /** The description FixFinder suggests from the photo, like "Overflowing trash can". */
 export interface PhotoDescription {
   text: string;
@@ -18,6 +26,8 @@ export interface PhotoDescription {
   sample: boolean;
   /** True when the user typed it on Describe it yourself, so Working does not credit FixFinder with it. */
   byUser?: boolean;
+  /** True when the user edited the description on Result, so Result marks it as their edit. */
+  edited?: boolean;
 }
 
 export interface FlowState {
@@ -56,6 +66,8 @@ export interface FlowActions {
   retryPhoto: () => void;
   /** Describe it yourself: carries on with the description the user typed, with the same photo. */
   describeItYourself: (text: string) => void;
+  /** Updates the description from Result. Empty or unchanged text leaves it as it was. */
+  editDescription: (text: string) => void;
 }
 
 export type FlowValue = FlowState & FlowActions;

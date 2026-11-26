@@ -1,10 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { useReportFlow } from "../flow/flow-context.ts";
+import { MAX_DESCRIPTION_CHARS, normalizeDescription, useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon } from "../icons.tsx";
-
-/** The longest description the user can type. The photo reader's own descriptions stay under this too. */
-export const MAX_OWN_DESCRIPTION_CHARS = 60;
 
 // Describe it yourself: when FixFinder couldn't read the photo, the user types the description, and the report carries
 // on to Working and Result with the same photo. Back returns to Working, where the other next step still waits.
@@ -12,7 +9,7 @@ export function DescribeYourself() {
   const { photo, describeItYourself } = useReportFlow();
   const navigate = useNavigate();
   const [text, setText] = useState("");
-  const description = text.replace(/\s+/g, " ").trim();
+  const description = normalizeDescription(text);
 
   // A reload or a direct visit has no photo in memory.
   if (!photo) return <Navigate to="/" replace />;
@@ -45,7 +42,7 @@ export function DescribeYourself() {
             type="text"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            maxLength={MAX_OWN_DESCRIPTION_CHARS}
+            maxLength={MAX_DESCRIPTION_CHARS}
             placeholder="Like: Overflowing trash can"
             autoComplete="off"
             enterKeyHint="go"
