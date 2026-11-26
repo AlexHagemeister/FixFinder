@@ -3,9 +3,6 @@ import { Navigate, useNavigate } from "react-router";
 import { MAX_DESCRIPTION_CHARS, normalizeDescription, useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon } from "../icons.tsx";
 
-/** The longest description the user can type. Kept under its prior export name for callers. */
-export const MAX_OWN_DESCRIPTION_CHARS = MAX_DESCRIPTION_CHARS;
-
 // Describe it yourself: when FixFinder couldn't read the photo, the user types the description, and the report carries
 // on to Working and Result with the same photo. Back returns to Working, where the other next step still waits.
 export function DescribeYourself() {
@@ -45,7 +42,7 @@ export function DescribeYourself() {
             type="text"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            maxLength={MAX_OWN_DESCRIPTION_CHARS}
+            maxLength={MAX_DESCRIPTION_CHARS}
             placeholder="Like: Overflowing trash can"
             autoComplete="off"
             enterKeyHint="go"

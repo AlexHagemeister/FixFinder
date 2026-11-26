@@ -834,10 +834,13 @@ describe("Editing the description on Result", () => {
     const row = screen.getByRole("button", { name: /Description.*Overflowing trash can/ });
     expect(row).toHaveTextContent("Edit");
     expect(screen.queryByText("Your edit")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
 
     fireEvent.click(row);
     const input = screen.getByLabelText("Description");
     expect(input).toHaveValue("Overflowing trash can");
+    // Done hides while the editor is open so Save is the sole primary button.
+    expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: "  Smashed   bus shelter glass " } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -845,6 +848,8 @@ describe("Editing the description on Result", () => {
     expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
     expect(screen.getByText("Smashed bus shelter glass")).toBeInTheDocument();
     expect(screen.getByText("Description").parentElement).toHaveTextContent("Your edit");
+    expect(screen.getByRole("button", { name: "Done" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Description.*Smashed bus shelter glass/ })).toHaveFocus();
   });
 
   it("clears the Sample chip and marks Your edit when the user edits a stand-in description", async () => {
@@ -874,6 +879,7 @@ describe("Editing the description on Result", () => {
     expect(screen.getByText("Pothole")).toBeInTheDocument();
     expect(screen.getByText("Description").parentElement).toHaveTextContent("Sample");
     expect(screen.queryByText("Your edit")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Description.*Pothole/ })).toHaveFocus();
 
     fireEvent.click(screen.getByRole("button", { name: /Description.*Pothole/ }));
     fireEvent.change(screen.getByLabelText("Description"), { target: { value: "Another draft" } });
@@ -881,6 +887,7 @@ describe("Editing the description on Result", () => {
 
     expect(screen.queryByLabelText("Description")).not.toBeInTheDocument();
     expect(screen.getByText("Pothole")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Description.*Pothole/ })).toHaveFocus();
   });
 
   it("keeps the description as it was when left empty or unchanged", async () => {

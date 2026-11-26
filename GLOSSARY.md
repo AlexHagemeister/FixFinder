@@ -107,8 +107,11 @@ The screen FixFinder shows when the user denies location. It says FixFinder need
 The screen that shows what FixFinder found: the user's photo, the description, the location, the responsible party, and its source. Retake photo opens the camera for a new report, and Done goes back to Home.
 
 **Sample chip**:
-The small grey "Sample" chip beside a field on Result whose content is sample output, not FixFinder's real answer: the responsible party while FixFinder does not look it up yet, and the description when it came from the stand-in. Home's placeholder sections use the same chip.
+The small grey "Sample" chip beside a field on Result whose content is sample output, not FixFinder's real answer: the responsible party while FixFinder does not look it up yet, and the description when it came from the stand-in (until the user edits it, when the Your edit chip replaces it). Home's placeholder sections use the same chip.
 _Avoid_: placeholder result (the note it replaced)
+
+**Your edit chip**:
+The small chip beside the description on Result marked "Your edit" after the user edits FixFinder's suggestion, replacing any Sample chip so the user can tell their own wording apart from FixFinder's guess.
 
 **Photo reader**:
 The AI step that reads the photo and suggests the description, or says it couldn't tell what the problem is. It runs in the Worker (`POST /api/describe-photo`). "Can't reach the photo reader" covers no connection, no answer in time, and the photo reader refusing a call to protect the budget.

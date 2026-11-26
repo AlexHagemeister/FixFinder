@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { MAX_DESCRIPTION_CHARS, normalizeDescription, useReportFlow } from "../flow/flow-context.ts";
 import { BackIcon, BuildingIcon, ExternalIcon, PinIcon, TagIcon } from "../icons.tsx";
@@ -22,8 +22,17 @@ export function Result() {
   const { photo, location, description, result, startReport, editDescription } = useReportFlow();
   const navigate = useNavigate();
   const photoInput = useRef<HTMLInputElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    if (!editing && shouldRestoreFocusRef.current) {
+      shouldRestoreFocusRef.current = false;
+      editButtonRef.current?.focus();
+    }
+  }, [editing]);
 
   // A reload or a direct visit has nothing in memory to show.
   if (!photo) return <Navigate to="/" replace />;
@@ -39,6 +48,7 @@ export function Result() {
   }
 
   function cancelEditing() {
+    shouldRestoreFocusRef.current = true;
     setEditing(false);
   }
 
@@ -46,6 +56,7 @@ export function Result() {
     event.preventDefault();
     const trimmed = normalizeDescription(draft);
     if (trimmed) editDescription(trimmed);
+    shouldRestoreFocusRef.current = true;
     setEditing(false);
   }
 
@@ -98,7 +109,7 @@ export function Result() {
               </form>
             </div>
           ) : (
-            <button type="button" className="row row-button" onClick={startEditing}>
+            <button ref={editButtonRef} type="button" className="row row-button" onClick={startEditing}>
               <TagIcon />
               <span className="stack grow">
                 {/* A Sample chip marks stand-in output; "Your edit" marks a description the user changed here. */}
@@ -149,11 +160,13 @@ export function Result() {
           </div>
         </div>
       </div>
-      <div className="actions">
-        <button type="button" className="btn primary" onClick={() => navigate("/")}>
-          Done
-        </button>
-      </div>
+      {!editing && (
+        <div className="actions">
+          <button type="button" className="btn primary" onClick={() => navigate("/")}>
+            Done
+          </button>
+        </div>
+      )}
     </main>
   );
 }
